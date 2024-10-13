@@ -4,6 +4,7 @@ import error.ErrorType;
 import token.Token;
 import token.TokenFactory;
 import error.ErrorHandler;
+import token.TokenManager;
 import token.TokenType;
 import util.IOUtils;
 
@@ -13,8 +14,8 @@ import java.util.List;
 
 public class Lexer {
     private static Lexer instance = new Lexer();
-    private List<Token> tokens = new ArrayList<>();   // 记录所有的Token
 
+    private TokenManager tokenManager = TokenManager.getInstance();  // TokenManager单例对象
     private int line = 1;                             // 当前行号
     private String content;                           // 输入的源代码
     private int position = 0;                         // 当前读取到的字符位置
@@ -68,7 +69,7 @@ public class Lexer {
         }
         String tokenStr = tokenBuilder.toString();
         Token token = TokenFactory.getInstance().createToken(tokenStr, line);
-        tokens.add(token);
+        tokenManager.saveToken(token);
     }
 
     private void analyzeNumber() {
@@ -79,7 +80,7 @@ public class Lexer {
             position++;
         }
         String numberStr = numberBuilder.toString();
-        tokens.add(TokenFactory.getInstance().createToken(numberStr, line, TokenType.INTCON));
+        tokenManager.saveToken(TokenFactory.getInstance().createToken(numberStr, line, TokenType.INTCON));
     }
 
     private void analyzeString() {
@@ -94,7 +95,7 @@ public class Lexer {
         if (position < content.length() && content.charAt(position) == '"') {
             position++; // 跳过结束引号
             stringBuilder.append('"');
-            tokens.add(TokenFactory.getInstance().createToken(stringBuilder.toString(), line, TokenType.STRCON));
+            tokenManager.saveToken(TokenFactory.getInstance().createToken(stringBuilder.toString(), line, TokenType.STRCON));
         }
 //        else {
 //            ErrorHandler.getInstance().reportError(line, "Unclosed string literal");
@@ -138,7 +139,7 @@ public class Lexer {
             if (position < content.length() && content.charAt(position) == '\'') {
                 position++; // 跳过结束单引号
                 charBuilder.append("'");
-                tokens.add(TokenFactory.getInstance().createToken(charBuilder.toString(), line, TokenType.CHRCON));
+                tokenManager.saveToken(TokenFactory.getInstance().createToken(charBuilder.toString(), line, TokenType.CHRCON));
             }
 //            else {
 //                ErrorHandler.getInstance().reportError(line, "Unclosed character literal");
@@ -156,14 +157,14 @@ public class Lexer {
                 char nextChar = content.charAt(position);
                 if(nextChar == '=') {
                     stringBuilder.append(currentChar).append(nextChar);
-                    tokens.add(TokenFactory.getInstance().createToken(stringBuilder.toString(), line));
+                    tokenManager.saveToken(TokenFactory.getInstance().createToken(stringBuilder.toString(), line));
                     position++;
                 }else {
-                    tokens.add(TokenFactory.getInstance().createToken(String.valueOf(currentChar), line));
+                    tokenManager.saveToken(TokenFactory.getInstance().createToken(String.valueOf(currentChar), line));
                 }
         }
         else {
-            tokens.add(TokenFactory.getInstance().createToken(String.valueOf(currentChar), line));
+            tokenManager.saveToken(TokenFactory.getInstance().createToken(String.valueOf(currentChar), line));
         }
 
     }
@@ -200,7 +201,7 @@ public class Lexer {
 //                }
             } else {
                 // 不是注释，而是除号
-                tokens.add(TokenFactory.getInstance().createToken("/", line, TokenType.DIV));
+                tokenManager.saveToken(TokenFactory.getInstance().createToken("/", line, TokenType.DIV));
             }
         }
     }
@@ -212,14 +213,19 @@ public class Lexer {
         position++;
         if (position < content.length() && content.charAt(position) == currentChar) {
             if (currentChar == '&') {
-                tokens.add(TokenFactory.getInstance().createToken("&&", line, TokenType.AND));
+                tokenManager.saveToken(TokenFactory.getInstance().createToken("&&", line, TokenType.AND));
             } else if (currentChar == '|') {
-                tokens.add(TokenFactory.getInstance().createToken("||", line, TokenType.OR));
+                tokenManager.saveToken(TokenFactory.getInstance().createToken("||", line, TokenType.OR));
             }
             position++;
         } else {
             // 处理非法符号 & 或 |
             ErrorHandler.getInstance().reportError(line, ErrorType.ILLEGAL_SYMBOL);
+            if(currentChar == '&'){
+                tokenManager.saveToken(TokenFactory.getInstance().createToken("&&", line, TokenType.AND));
+            }else {
+                tokenManager.saveToken(TokenFactory.getInstance().createToken("||", line, TokenType.OR));
+            }
         }
     }
 
@@ -228,7 +234,7 @@ public class Lexer {
     }
 
     private void saveResults() {
-        IOUtils.writeTokensToFile(tokens, "lexer.txt");
-        IOUtils.writeErrorsToFile(ErrorHandler.getInstance().getErrors(), "error.txt");
+        IOUtils.writeTokensToFile(tokenManager.getTokens(), "lexer.txt");
+//        IOUtils.writeErrorsToFile(ErrorHandler.getInstance().getErrors(), "error.txt");
     }
 }
