@@ -25,6 +25,10 @@ public class VarDefNode {
         return ident;
     }
 
+    public Token getToken() {
+        return token;
+    }
+
     public ConstExpNode getConstExpNode() {
         return constExpNode;
     }
