@@ -20,6 +20,18 @@ public class CompUnitNode {
         this.mainFuncDefNode = mainFuncDefNode;
     }
 
+    public List<DeclNode> getDeclNodes() {
+        return declNodes;
+    }
+
+    public List<FuncDefNode> getFuncDefNodes() {
+        return funcDefNodes;
+    }
+
+    public MainFuncDefNode getMainFuncDefNode() {
+        return mainFuncDefNode;
+    }
+
     // 打印方法，用于输出语法分析结果
     public void print() {
         for (DeclNode declNode : declNodes) {

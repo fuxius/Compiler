@@ -20,6 +20,18 @@ public class LOrExpNode {
         this.lAndExpNode = lAndExpNode;
     }
 
+    public LOrExpNode getlOrExpNode() {
+        return lOrExpNode;
+    }
+
+    public LAndExpNode getlAndExpNode() {
+        return lAndExpNode;
+    }
+
+    public LAndExpNode getSingleLAndExpNode() {
+        return singleLAndExpNode;
+    }
+
     public void print() {
         if (singleLAndExpNode != null) {
             singleLAndExpNode.print();

@@ -16,6 +16,14 @@ public class DeclNode {
         this.varDeclNode = varDeclNode;
     }
 
+    public ConstDeclNode getConstDeclNode() {
+        return constDeclNode;
+    }
+
+    public VarDeclNode getVarDeclNode() {
+        return varDeclNode;
+    }
+
     public void print() {
         if (constDeclNode != null) {
             constDeclNode.print();

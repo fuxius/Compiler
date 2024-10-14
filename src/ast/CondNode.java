@@ -11,6 +11,10 @@ public class CondNode {
         this.lOrExpNode = lOrExpNode;
     }
 
+    public LOrExpNode getlOrExpNode() {
+        return lOrExpNode;
+    }
+
     public void print() {
         lOrExpNode.print();
 

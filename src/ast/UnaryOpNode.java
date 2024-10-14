@@ -1,14 +1,22 @@
 package ast;
 
+import token.Token;
+
 /**
  * 单目运算符节点
  * 对应文法：UnaryOp → '+' | '−' | '!'
  */
 public class UnaryOpNode {
     private String op; // '+', '-', '!'
+    private Token token;
 
-    public UnaryOpNode(String op) {
-        this.op = op;
+    public UnaryOpNode(Token token) {
+        this.token = token;
+        this.op = token.getValue();
+    }
+
+    public String getOp() {
+        return op;
     }
 
     public void print() {

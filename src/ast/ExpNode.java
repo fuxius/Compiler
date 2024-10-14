@@ -11,6 +11,10 @@ public class ExpNode {
         this.addExpNode = addExpNode;
     }
 
+    public AddExpNode getAddExpNode() {
+        return addExpNode;
+    }
+
     public void print() {
         addExpNode.print();
         System.out.println("<Exp>");

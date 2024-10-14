@@ -1,5 +1,7 @@
 package ast;
 
+import token.Token;
+
 /**
  * 关系表达式节点
  * 对应文法：RelExp → AddExp | RelExp ('<' | '>' | '<=' | '>=') AddExp
@@ -7,6 +9,7 @@ package ast;
 public class RelExpNode {
     private RelExpNode relExpNode;
     private String op; // '<', '>', '<=', '>='
+    private Token token;
     private AddExpNode addExpNode;
     private AddExpNode singleAddExpNode;
 
@@ -16,10 +19,27 @@ public class RelExpNode {
     }
 
     // RelExp ('<' | '>' | '<=' | '>=') AddExp
-    public RelExpNode(RelExpNode relExpNode, String op, AddExpNode addExpNode) {
+    public RelExpNode(RelExpNode relExpNode, Token token, AddExpNode addExpNode) {
         this.relExpNode = relExpNode;
-        this.op = op;
+        this.token = token;
+        this.op = token.getValue();
         this.addExpNode = addExpNode;
+    }
+
+    public RelExpNode getRelExpNode() {
+        return relExpNode;
+    }
+
+    public String getOp() {
+        return op;
+    }
+
+    public AddExpNode getAddExpNode() {
+        return addExpNode;
+    }
+
+    public AddExpNode getSingleAddExpNode() {
+        return singleAddExpNode;
     }
 
     public void print() {

@@ -13,6 +13,10 @@ public class BlockNode {
         this.blockItemNodes = blockItemNodes;
     }
 
+    public List<BlockItemNode> getBlockItemNodes() {
+        return blockItemNodes;
+    }
+
     public void print() {
         System.out.println("LBRACE {");
         for (BlockItemNode blockItemNode : blockItemNodes) {

@@ -13,6 +13,14 @@ public class ForStmtNode {
         this.expNode = expNode;
     }
 
+    public LValNode getlValNode() {
+        return lValNode;
+    }
+
+    public ExpNode getExpNode() {
+        return expNode;
+    }
+
     public void print() {
         lValNode.print();
         System.out.println("ASSIGN =");

@@ -1,5 +1,7 @@
 package ast;
 
+import token.Token;
+
 import java.util.List;
 
 /**
@@ -13,6 +15,7 @@ public class InitValNode {
     private ExpNode expNode;
     private List<ExpNode> expNodeList;
     private String stringConst;
+    private Token token;
 
     // 单个表达式
     public InitValNode(ExpNode expNode) {
@@ -24,9 +27,26 @@ public class InitValNode {
         this.expNodeList = expNodeList;
     }
 
+    public Token getToken() {
+        return token;
+    }
+
     // 字符串常量
-    public InitValNode(String stringConst) {
-        this.stringConst = stringConst;
+    public InitValNode(Token token) {
+        this.token = token;
+        this.stringConst = token.getValue();
+    }
+
+    public ExpNode getExpNode() {
+        return expNode;
+    }
+
+    public List<ExpNode> getExpNodeList() {
+        return expNodeList;
+    }
+
+    public String getStringConst() {
+        return stringConst;
     }
 
     public void print() {

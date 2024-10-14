@@ -1,5 +1,7 @@
 package ast;
 
+import token.Token;
+
 /**
  * 函数定义节点
  * 对应文法：FuncDef → FuncType Ident '(' [FuncFParams] ')' Block
@@ -7,14 +9,36 @@ package ast;
 public class FuncDefNode {
     private FuncTypeNode funcTypeNode;
     private String ident;
+    private Token token;
     private FuncFParamsNode funcFParamsNode; // 可选
     private BlockNode blockNode;
 
-    public FuncDefNode(FuncTypeNode funcTypeNode, String ident, FuncFParamsNode funcFParamsNode, BlockNode blockNode) {
+    public Token getToken() {
+        return token;
+    }
+
+    public FuncDefNode(FuncTypeNode funcTypeNode, Token token, FuncFParamsNode funcFParamsNode, BlockNode blockNode) {
         this.funcTypeNode = funcTypeNode;
-        this.ident = ident;
+        this.token = token;
+        this.ident = token.getValue();
         this.funcFParamsNode = funcFParamsNode;
         this.blockNode = blockNode;
+    }
+
+    public FuncTypeNode getFuncTypeNode() {
+        return funcTypeNode;
+    }
+
+    public String getIdent() {
+        return ident;
+    }
+
+    public FuncFParamsNode getFuncFParamsNode() {
+        return funcFParamsNode;
+    }
+
+    public BlockNode getBlockNode() {
+        return blockNode;
     }
 
     public void print() {

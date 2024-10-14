@@ -15,6 +15,14 @@ public class VarDeclNode {
         this.varDefNodes = varDefNodes;
     }
 
+    public BTypeNode getbTypeNode() {
+        return bTypeNode;
+    }
+
+    public List<VarDefNode> getVarDefNodes() {
+        return varDefNodes;
+    }
+
     public void print() {
         bTypeNode.print();
         for (VarDefNode varDefNode : varDefNodes) {

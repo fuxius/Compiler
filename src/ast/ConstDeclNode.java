@@ -17,6 +17,14 @@ public class ConstDeclNode {
         this.constDefNodes = constDefNodes;
     }
 
+    public BTypeNode getbTypeNode() {
+        return bTypeNode;
+    }
+
+    public List<ConstDefNode> getConstDefNodes() {
+        return constDefNodes;
+    }
+
     public void print() {
         // 输出 'const' 关键字
         System.out.println("CONSTTK const");

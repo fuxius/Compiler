@@ -186,11 +186,11 @@ public class Parser {
     // 解析BType
     private BTypeNode parseBType() {
         if (checkToken(TokenType.INTTK)) {
-            match(TokenType.INTTK);
-            return new BTypeNode("int");
+            Token IntToken = match(TokenType.INTTK);
+            return new BTypeNode(IntToken);
         } else if (checkToken(TokenType.CHARTK)) {
-            match(TokenType.CHARTK);
-            return new BTypeNode("char");
+            Token CharToken = match(TokenType.CHARTK);
+            return new BTypeNode(CharToken);
         } else {
             reportError(currentToken, ErrorType.UNDEFINED_IDENT);
             return null;
@@ -215,7 +215,7 @@ public class Parser {
             match(TokenType.ASSIGN); // 匹配'='
             ConstInitValNode constInitValNode = parseConstInitVal();
             outputGrammar("<ConstDef>");
-            return new ConstDefNode(identToken.getValue(), constExpNode, constInitValNode);
+            return new ConstDefNode(identToken, constExpNode, constInitValNode);
         } else {
             reportError(currentToken, ErrorType.UNDEFINED_IDENT);
             return null;
@@ -252,7 +252,7 @@ public class Parser {
             // StringConst
             Token strToken = match(TokenType.STRCON);
             outputGrammar("<ConstInitVal>");
-            return new ConstInitValNode(strToken.getValue());
+            return new ConstInitValNode(strToken);
         } else {
             // ConstExp
             ConstExpNode constExpNode = parseConstExp();
@@ -277,7 +277,7 @@ public class Parser {
             Token opToken = currentToken;
             match(currentToken.getType()); // 匹配'+' 或 '-'
             MulExpNode nextMulExpNode = parseMulExp();
-            addExpNode = new AddExpNode(addExpNode, opToken.getValue(), nextMulExpNode);
+            addExpNode = new AddExpNode(addExpNode, opToken, nextMulExpNode);
         }
         outputGrammar("<AddExp>");
         return addExpNode;
@@ -292,7 +292,7 @@ public class Parser {
             Token opToken = currentToken;
             match(currentToken.getType()); // 匹配'*'、'/'、'%'
             UnaryExpNode nextUnaryExpNode = parseUnaryExp();
-            mulExpNode = new MulExpNode(mulExpNode, opToken.getValue(), nextUnaryExpNode);
+            mulExpNode = new MulExpNode(mulExpNode, opToken, nextUnaryExpNode);
         }
         outputGrammar("<MulExp>");
         return mulExpNode;
@@ -316,7 +316,7 @@ public class Parser {
                 } else {
                     match(TokenType.RPARENT); // 匹配')'
                 }
-                UnaryExpNode unaryExpNode = new UnaryExpNode(identToken.getValue(), funcRParamsNode);
+                UnaryExpNode unaryExpNode = new UnaryExpNode(identToken, funcRParamsNode);
                 outputGrammar("<UnaryExp>");
                 return unaryExpNode;
             } else {
@@ -353,7 +353,7 @@ public class Parser {
        match(currentToken.getType()); // 匹配一元运算符
        // 输出 <UnaryOp>
        outputGrammar("<UnaryOp>");
-       return new UnaryOpNode(opToken.getValue());
+       return new UnaryOpNode(opToken);
 
     }
     // 解析PrimaryExp
@@ -396,14 +396,14 @@ public class Parser {
     // 解析Number
     private NumberNode parseNumber() {
         Token intToken = match(TokenType.INTCON);
-        NumberNode numberNode = new NumberNode(intToken.getValue());
+        NumberNode numberNode = new NumberNode(intToken);
         outputGrammar("<Number>");
         return numberNode;
     }
     // 解析Character
     private CharacterNode parseCharacter() {
          Token charToken = match(TokenType.CHRCON);
-         CharacterNode characterNode = new CharacterNode(charToken.getValue());
+         CharacterNode characterNode = new CharacterNode(charToken);
          outputGrammar("<Character>");
          return characterNode;
     }
@@ -428,7 +428,7 @@ public class Parser {
                 match(TokenType.RBRACK); // 匹配']'
             }
         }
-        LValNode lValNode = new LValNode(identToken.getValue(), expNode);
+        LValNode lValNode = new LValNode(identToken, expNode);
         outputGrammar("<LVal>");
         return lValNode;
     }
@@ -502,7 +502,7 @@ public class Parser {
                 match(TokenType.ASSIGN); // 匹配'='
                 initValNode = parseInitVal();
             }
-            VarDefNode varDefNode = new VarDefNode(identToken.getValue(), constExpNode, initValNode);
+            VarDefNode varDefNode = new VarDefNode(identToken, constExpNode, initValNode);
             outputGrammar("<VarDef>");
             return varDefNode;
         } else {
@@ -541,7 +541,7 @@ public class Parser {
             // StringConst
             Token strToken = match(TokenType.STRCON);
             outputGrammar("<InitVal>");
-            return new InitValNode(strToken.getValue());
+            return new InitValNode(strToken);
         } else {
             // Exp
             ExpNode expNode = parseExp();
@@ -567,7 +567,7 @@ public class Parser {
             }
             BlockNode blockNode = parseBlock();
             outputGrammar("<FuncDef>");
-            return new FuncDefNode(funcTypeNode, identToken.getValue(), funcFParamsNode, blockNode);
+            return new FuncDefNode(funcTypeNode, identToken, funcFParamsNode, blockNode);
         } else {
             reportError(currentToken, ErrorType.UNDEFINED_IDENT);
             return null;
@@ -577,17 +577,17 @@ public class Parser {
     // 解析FuncType
     private FuncTypeNode parseFuncType() {
         if (checkToken(TokenType.VOIDTK)) {
-            match(TokenType.VOIDTK);
+            Token voidToken = match(TokenType.VOIDTK);
             outputGrammar("<FuncType>");
-            return new FuncTypeNode("void");
+            return new FuncTypeNode(voidToken);
         } else if (checkToken(TokenType.INTTK)) {
-            match(TokenType.INTTK);
+            Token intToken = match(TokenType.INTTK);
             outputGrammar("<FuncType>");
-            return new FuncTypeNode("int");
+            return new FuncTypeNode(intToken);
         } else if (checkToken(TokenType.CHARTK)) {
-            match(TokenType.CHARTK);
+            Token charToken = match(TokenType.CHARTK);
             outputGrammar("<FuncType>");
-            return new FuncTypeNode("char");
+            return new FuncTypeNode(charToken);
         } else {
             reportError(currentToken, ErrorType.UNDEFINED_IDENT);
             return null;
@@ -628,7 +628,7 @@ public class Parser {
                 isArray = true;
             }
             outputGrammar("<FuncFParam>");
-            return new FuncFParamNode(bTypeNode, identToken.getValue(), isArray);
+            return new FuncFParamNode(bTypeNode, identToken, isArray);
         } else {
             reportError(currentToken, ErrorType.UNDEFINED_IDENT);
             return null;
@@ -726,27 +726,27 @@ public class Parser {
             return new StmtNode(forInit, condNode, forUpdate, bodyStmt);
         } else if (checkToken(TokenType.BREAKTK)) {
             // 'break' ';'
-            match(TokenType.BREAKTK); // 匹配'break'
+            Token breakToken = match(TokenType.BREAKTK); // 匹配'break'
             if (!checkToken(TokenType.SEMICN)) {
                 reportError(prevToken, ErrorType.MISSING_SEMICOLON); // 缺少';'，使用prevToken
             } else {
                 match(TokenType.SEMICN); // 匹配';'
             }
             outputGrammar("<Stmt>");
-            return new StmtNode("break");
+            return new StmtNode(breakToken);
         } else if (checkToken(TokenType.CONTINUETK)) {
             // 'continue' ';'
-            match(TokenType.CONTINUETK); // 匹配'continue'
+            Token continueToken = match(TokenType.CONTINUETK); // 匹配'continue'
             if (!checkToken(TokenType.SEMICN)) {
                 reportError(prevToken, ErrorType.MISSING_SEMICOLON); // 缺少';'，使用prevToken
             } else {
                 match(TokenType.SEMICN); // 匹配';'
             }
             outputGrammar("<Stmt>");
-            return new StmtNode("continue");
+            return new StmtNode(continueToken);
         } else if (checkToken(TokenType.RETURNTK)) {
             // 'return' [Exp] ';'
-            match(TokenType.RETURNTK); // 匹配'return'
+            Token returnToken = match(TokenType.RETURNTK); // 匹配'return'
             ExpNode expNode = null;
             if (!checkToken(TokenType.SEMICN)) {
                 expNode = parseExp();
@@ -757,7 +757,7 @@ public class Parser {
                 match(TokenType.SEMICN); // 匹配';'
             }
             outputGrammar("<Stmt>");
-            return new StmtNode("return", expNode);
+            return new StmtNode(returnToken, expNode);
         } else if (checkToken(TokenType.PRINTFTK)) {
             // 'printf' '(' StringConst {',' Exp} ')' ';'
             match(TokenType.PRINTFTK); // 匹配'printf'
@@ -783,7 +783,7 @@ public class Parser {
                 match(TokenType.SEMICN); // 匹配';'
             }
             outputGrammar("<Stmt>");
-            return new StmtNode(formatStringToken.getValue(), expNodes);
+            return new StmtNode(formatStringToken, expNodes);
         } else if (checkToken(TokenType.SEMICN)) {
             // 空语句 ';'
             match(TokenType.SEMICN); // 匹配';'
@@ -912,7 +912,7 @@ public class Parser {
             Token opToken = currentToken;
             match(currentToken.getType()); // 匹配'==' 或 '!='
             RelExpNode nextRelExpNode = parseRelExp();
-            eqExpNode = new EqExpNode(eqExpNode, opToken.getValue(), nextRelExpNode);
+            eqExpNode = new EqExpNode(eqExpNode, opToken, nextRelExpNode);
         }
         outputGrammar("<EqExp>");
         return eqExpNode;
@@ -927,7 +927,7 @@ public class Parser {
             Token opToken = currentToken;
             match(currentToken.getType()); // 匹配关系运算符
             AddExpNode nextAddExpNode = parseAddExp();
-            relExpNode = new RelExpNode(relExpNode, opToken.getValue(), nextAddExpNode);
+            relExpNode = new RelExpNode(relExpNode, opToken, nextAddExpNode);
         }
         outputGrammar("<RelExp>");
         return relExpNode;

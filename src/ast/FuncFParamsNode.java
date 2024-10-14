@@ -13,6 +13,10 @@ public class FuncFParamsNode {
         this.funcFParamNodes = funcFParamNodes;
     }
 
+    public List<FuncFParamNode> getFuncFParamNodes() {
+        return funcFParamNodes;
+    }
+
     public void print() {
         for (int i = 0; i < funcFParamNodes.size(); i++) {
             funcFParamNodes.get(i).print();

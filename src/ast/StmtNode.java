@@ -1,5 +1,7 @@
 package ast;
 
+import token.Token;
+
 import java.util.List;
 
 /**
@@ -24,6 +26,7 @@ public class StmtNode {
     private StmtNode stmtNode1;
     private StmtNode stmtNode2;
     private String keyword; // 'break'、'continue'、'return' 等
+    private Token token;
     private String stringConst;
     private List<ExpNode> expNodeList;
     private CondNode condNode;
@@ -57,13 +60,19 @@ public class StmtNode {
     }
 
     // 示例：'break' ';' 或 'continue' ';'
-    public StmtNode(String keyword) {
-        this.keyword = keyword;
+    public StmtNode(Token token) {
+        this.token = token;
+        this.keyword = token.getValue();
+    }
+
+    public Token getToken() {
+        return token;
     }
 
     // 示例：'return' [Exp] ';'
-    public StmtNode(String keyword, ExpNode expNode) {
-        this.keyword = keyword;
+    public StmtNode(Token token, ExpNode expNode) {
+        this.token= token;
+        this.keyword = token.getValue();
         this.expNode = expNode;
     }
 
@@ -74,8 +83,9 @@ public class StmtNode {
     }
 
     // 示例：'printf' '(' StringConst {',' Exp} ')' ';'
-    public StmtNode(String stringConst, List<ExpNode> expNodeList) {
-        this.stringConst = stringConst;
+    public StmtNode(Token token, List<ExpNode> expNodeList) {
+        this.token = token;
+        this.stringConst = token.getValue();
         this.expNodeList = expNodeList;
     }
 
@@ -85,6 +95,50 @@ public class StmtNode {
         this.condNode = condNode;
         this.forStmtNode2 = forStmtNode2;
         this.stmtNode1 = stmtNode1;
+    }
+
+    public LValNode getlValNode() {
+        return lValNode;
+    }
+
+    public ExpNode getExpNode() {
+        return expNode;
+    }
+
+    public StmtNode getStmtNode1() {
+        return stmtNode1;
+    }
+
+    public StmtNode getStmtNode2() {
+        return stmtNode2;
+    }
+
+    public String getKeyword() {
+        return keyword;
+    }
+
+    public String getStringConst() {
+        return stringConst;
+    }
+
+    public List<ExpNode> getExpNodeList() {
+        return expNodeList;
+    }
+
+    public CondNode getCondNode() {
+        return condNode;
+    }
+
+    public ForStmtNode getForStmtNode1() {
+        return forStmtNode1;
+    }
+
+    public ForStmtNode getForStmtNode2() {
+        return forStmtNode2;
+    }
+
+    public BlockNode getBlockNode() {
+        return blockNode;
     }
 
     public void print() {

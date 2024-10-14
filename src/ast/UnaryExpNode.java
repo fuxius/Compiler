@@ -1,5 +1,7 @@
 package ast;
 
+import token.Token;
+
 import java.util.List;
 
 /**
@@ -12,6 +14,7 @@ import java.util.List;
 public class UnaryExpNode {
     private PrimaryExpNode primaryExpNode;
     private String ident;
+    private Token token;
     private FuncRParamsNode funcRParamsNode; // 可选
     private UnaryOpNode unaryOpNode;
     private UnaryExpNode unaryExpNode;
@@ -21,10 +24,35 @@ public class UnaryExpNode {
         this.primaryExpNode = primaryExpNode;
     }
 
+    public Token getToken() {
+        return token;
+    }
+
     // Ident '(' [FuncRParams] ')'
-    public UnaryExpNode(String ident, FuncRParamsNode funcRParamsNode) {
-        this.ident = ident;
+    public UnaryExpNode(Token token, FuncRParamsNode funcRParamsNode) {
+        this.token = token;
+        this.ident = token.getValue();
         this.funcRParamsNode = funcRParamsNode;
+    }
+
+    public PrimaryExpNode getPrimaryExpNode() {
+        return primaryExpNode;
+    }
+
+    public String getIdent() {
+        return ident;
+    }
+
+    public FuncRParamsNode getFuncRParamsNode() {
+        return funcRParamsNode;
+    }
+
+    public UnaryOpNode getUnaryOpNode() {
+        return unaryOpNode;
+    }
+
+    public UnaryExpNode getUnaryExpNode() {
+        return unaryExpNode;
     }
 
     // UnaryOp UnaryExp

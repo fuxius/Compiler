@@ -20,6 +20,18 @@ public class LAndExpNode {
         this.eqExpNode = eqExpNode;
     }
 
+    public LAndExpNode getlAndExpNode() {
+        return lAndExpNode;
+    }
+
+    public EqExpNode getEqExpNode() {
+        return eqExpNode;
+    }
+
+    public EqExpNode getSingleEqExpNode() {
+        return singleEqExpNode;
+    }
+
     public void print() {
         if (singleEqExpNode != null) {
             singleEqExpNode.print();

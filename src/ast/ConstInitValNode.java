@@ -1,5 +1,7 @@
 package ast;
 
+import token.Token;
+
 import java.util.List;
 
 /**
@@ -13,10 +15,15 @@ public class ConstInitValNode {
     private ConstExpNode constExpNode;
     private List<ConstExpNode> constExpNodeList;
     private String stringConst;
+    private Token token;
 
     // 单个常量表达式
     public ConstInitValNode(ConstExpNode constExpNode) {
         this.constExpNode = constExpNode;
+    }
+
+    public Token getToken() {
+        return token;
     }
 
     // 常量表达式列表（数组）
@@ -25,8 +32,21 @@ public class ConstInitValNode {
     }
 
     // 字符串常量
-    public ConstInitValNode(String stringConst) {
-        this.stringConst = stringConst;
+    public ConstInitValNode(Token token) {
+        this.token = token;
+        this.stringConst = token.getValue();
+    }
+
+    public ConstExpNode getConstExpNode() {
+        return constExpNode;
+    }
+
+    public List<ConstExpNode> getConstExpNodeList() {
+        return constExpNodeList;
+    }
+
+    public String getStringConst() {
+        return stringConst;
     }
 
     public void print() {

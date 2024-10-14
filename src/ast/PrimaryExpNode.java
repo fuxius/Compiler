@@ -32,6 +32,22 @@ public class PrimaryExpNode {
         this.characterNode = characterNode;
     }
 
+    public CharacterNode getCharacterNode() {
+        return characterNode;
+    }
+
+    public ExpNode getExpNode() {
+        return expNode;
+    }
+
+    public LValNode getlValNode() {
+        return lValNode;
+    }
+
+    public NumberNode getNumberNode() {
+        return numberNode;
+    }
+
     public void print() {
         if (expNode != null) {
             System.out.println("LPARENT (");

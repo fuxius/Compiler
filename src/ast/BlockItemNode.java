@@ -24,4 +24,12 @@ public class BlockItemNode {
         }
         // 不需要输出 <BlockItem>
     }
+
+    public DeclNode getDeclNode() {
+        return declNode;
+    }
+
+    public StmtNode getStmtNode() {
+        return stmtNode;
+    }
 }

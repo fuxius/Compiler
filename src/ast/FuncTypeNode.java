@@ -1,14 +1,25 @@
 package ast;
 
+import token.Token;
+
 /**
  * 函数类型节点
  * 对应文法：FuncType → 'void' | 'int' | 'char'
  */
 public class FuncTypeNode {
     private String type; // 'void'，'int'，或 'char'
+    private Token token;
+    public FuncTypeNode(Token token) {
+        this.token = token;
+        this.type = token.getValue();
+    }
 
-    public FuncTypeNode(String type) {
-        this.type = type;
+    public String getType() {
+        return type;
+    }
+
+    public Token getToken() {
+        return token;
     }
 
     public void print() {

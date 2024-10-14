@@ -1,5 +1,7 @@
 package ast;
 
+import token.Token;
+
 /**
  * 相等性表达式节点
  * 对应文法：EqExp → RelExp | EqExp ('==' | '!=') RelExp
@@ -9,17 +11,39 @@ public class EqExpNode {
     private String op; // '==' 或 '!='
     private RelExpNode relExpNode;
     private RelExpNode singleRelExpNode;
+    private Token token;
 
     // 单个 RelExp
     public EqExpNode(RelExpNode singleRelExpNode) {
         this.singleRelExpNode = singleRelExpNode;
     }
 
+    public Token getToken() {
+        return token;
+    }
+
     // EqExp ('==' | '!=') RelExp
-    public EqExpNode(EqExpNode eqExpNode, String op, RelExpNode relExpNode) {
+    public EqExpNode(EqExpNode eqExpNode, Token token, RelExpNode relExpNode) {
         this.eqExpNode = eqExpNode;
-        this.op = op;
+        this.token = token;
+        this.op = token.getValue();
         this.relExpNode = relExpNode;
+    }
+
+    public EqExpNode getEqExpNode() {
+        return eqExpNode;
+    }
+
+    public String getOp() {
+        return op;
+    }
+
+    public RelExpNode getRelExpNode() {
+        return relExpNode;
+    }
+
+    public RelExpNode getSingleRelExpNode() {
+        return singleRelExpNode;
     }
 
     public void print() {

@@ -1,5 +1,7 @@
 package ast;
 
+import token.Token;
+
 /**
  * 变量定义节点
  * 对应文法：
@@ -8,13 +10,27 @@ package ast;
  */
 public class VarDefNode {
     private String ident; // 标识符名称
+    private Token token;
     private ConstExpNode constExpNode; // 可选的数组大小
     private InitValNode initValNode; // 可选的初始值
 
-    public VarDefNode(String ident, ConstExpNode constExpNode, InitValNode initValNode) {
-        this.ident = ident;
+    public VarDefNode(Token token, ConstExpNode constExpNode, InitValNode initValNode) {
+        this.token = token;
+        this.ident = token.getValue();
         this.constExpNode = constExpNode;
         this.initValNode = initValNode;
+    }
+
+    public String getIdent() {
+        return ident;
+    }
+
+    public ConstExpNode getConstExpNode() {
+        return constExpNode;
+    }
+
+    public InitValNode getInitValNode() {
+        return initValNode;
     }
 
     public void print() {

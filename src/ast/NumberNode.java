@@ -1,14 +1,26 @@
 package ast;
 
+import token.Token;
+
 /**
  * 数值节点
  * 对应文法：Number → IntConst
  */
 public class NumberNode {
     private String intConst;
+    private Token token;
 
-    public NumberNode(String intConst) {
-        this.intConst = intConst;
+    public Token getToken() {
+        return token;
+    }
+
+    public NumberNode(Token token) {
+        this.token = token;
+        this.intConst = token.getValue();
+    }
+
+    public String getIntConst() {
+        return intConst;
     }
 
     public void print() {

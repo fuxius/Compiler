@@ -1,5 +1,7 @@
 package ast;
 
+import token.Token;
+
 /**
  * 加减表达式节点
  * 对应文法：AddExp → MulExp | AddExp ('+' | '−') MulExp
@@ -9,6 +11,7 @@ public class AddExpNode {
     private String op; // '+' 或 '-'
     private MulExpNode mulExpNode;
     private MulExpNode singleMulExpNode;
+    private Token token;
 
     // 单个 MulExp
     public AddExpNode(MulExpNode singleMulExpNode) {
@@ -16,10 +19,31 @@ public class AddExpNode {
     }
 
     // AddExp ('+' | '−') MulExp
-    public AddExpNode(AddExpNode addExpNode, String op, MulExpNode mulExpNode) {
+    public AddExpNode(AddExpNode addExpNode, Token token, MulExpNode mulExpNode) {
         this.addExpNode = addExpNode;
-        this.op = op;
+        this.token = token;
+        this.op = token.getValue();
         this.mulExpNode = mulExpNode;
+    }
+
+    public Token getToken() {
+        return token;
+    }
+
+    public AddExpNode getAddExpNode() {
+        return addExpNode;
+    }
+
+    public String getOp() {
+        return op;
+    }
+
+    public MulExpNode getMulExpNode() {
+        return mulExpNode;
+    }
+
+    public MulExpNode getSingleMulExpNode() {
+        return singleMulExpNode;
     }
 
     public void print() {

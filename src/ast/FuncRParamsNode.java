@@ -13,6 +13,10 @@ public class FuncRParamsNode {
         this.expNodes = expNodes;
     }
 
+    public List<ExpNode> getExpNodes() {
+        return expNodes;
+    }
+
     public void print() {
         for (int i = 0; i < expNodes.size(); i++) {
             expNodes.get(i).print();

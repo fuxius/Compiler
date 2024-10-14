@@ -11,6 +11,10 @@ public class MainFuncDefNode {
         this.blockNode = blockNode;
     }
 
+    public BlockNode getBlockNode() {
+        return blockNode;
+    }
+
     public void print() {
         System.out.println("INTTK int");
         System.out.println("MAINTK main");

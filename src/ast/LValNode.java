@@ -1,5 +1,7 @@
 package ast;
 
+import token.Token;
+
 import java.util.List;
 
 /**
@@ -10,9 +12,24 @@ public class LValNode {
     private String ident;
     private ExpNode expNode; // 可选的数组下标
 
-    public LValNode(String ident, ExpNode expNode) {
-        this.ident = ident;
+    private Token token;
+
+    public Token getToken() {
+        return token;
+    }
+
+    public LValNode(Token token, ExpNode expNode) {
+        this.token = token;
+        this.ident = token.getValue();
         this.expNode = expNode;
+    }
+
+    public String getIdent() {
+        return ident;
+    }
+
+    public ExpNode getExpNode() {
+        return expNode;
     }
 
     public void print() {

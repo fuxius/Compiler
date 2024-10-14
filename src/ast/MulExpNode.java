@@ -1,5 +1,7 @@
 package ast;
 
+import token.Token;
+
 /**
  * 乘除模表达式节点
  * 对应文法：MulExp → UnaryExp | MulExp ('*' | '/' | '%') UnaryExp
@@ -9,17 +11,39 @@ public class MulExpNode {
     private String op; // '*', '/', '%'
     private UnaryExpNode unaryExpNode;
     private UnaryExpNode singleUnaryExpNode;
+    private Token token;
 
     // 单个 UnaryExp
     public MulExpNode(UnaryExpNode singleUnaryExpNode) {
         this.singleUnaryExpNode = singleUnaryExpNode;
     }
 
+    public Token getToken() {
+        return token;
+    }
+
     // MulExp ('*' | '/' | '%') UnaryExp
-    public MulExpNode(MulExpNode mulExpNode, String op, UnaryExpNode unaryExpNode) {
+    public MulExpNode(MulExpNode mulExpNode, Token token, UnaryExpNode unaryExpNode) {
         this.mulExpNode = mulExpNode;
-        this.op = op;
+        this.token= token;
+        this.op = token.getValue();
         this.unaryExpNode = unaryExpNode;
+    }
+
+    public MulExpNode getMulExpNode() {
+        return mulExpNode;
+    }
+
+    public String getOp() {
+        return op;
+    }
+
+    public UnaryExpNode getUnaryExpNode() {
+        return unaryExpNode;
+    }
+
+    public UnaryExpNode getSingleUnaryExpNode() {
+        return singleUnaryExpNode;
     }
 
     public void print() {
