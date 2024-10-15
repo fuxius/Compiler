@@ -198,14 +198,17 @@ public class Parser {
     }
 
     // 解析ConstDef
+    // 解析ConstDef
     private ConstDefNode parseConstDef() {
-        // 常量定义 ConstDef → Ident [ '[' ConstExp ']' ] '=' ConstInitVal // k
+        // 常量定义 ConstDef → Ident { '[' ConstExp ']' } '=' ConstInitVal
         if (checkToken(TokenType.IDENFR)) {
             Token identToken = match(TokenType.IDENFR);
-            ConstExpNode constExpNode = null;
-            if (checkToken(TokenType.LBRACK)) {
+            List<ConstExpNode> constExpNodes = new ArrayList<>();
+            // 解析零个或多个 '[' ConstExp ']'
+            while (checkToken(TokenType.LBRACK)) {
                 match(TokenType.LBRACK); // 匹配'['
-                constExpNode = parseConstExp();
+                ConstExpNode constExpNode = parseConstExp();
+                constExpNodes.add(constExpNode);
                 if (!checkToken(TokenType.RBRACK)) {
                     reportError(prevToken, ErrorType.MISSING_RIGHT_BRACE); // 缺少']'，使用prevToken
                 } else {
@@ -215,12 +218,13 @@ public class Parser {
             match(TokenType.ASSIGN); // 匹配'='
             ConstInitValNode constInitValNode = parseConstInitVal();
             outputGrammar("<ConstDef>");
-            return new ConstDefNode(identToken, constExpNode, constInitValNode);
+            return new ConstDefNode(identToken, constExpNodes, constInitValNode);
         } else {
             reportError(currentToken, ErrorType.UNDEFINED_IDENT);
             return null;
         }
     }
+
 
     // 解析ConstInitVal
     private ConstInitValNode parseConstInitVal() {

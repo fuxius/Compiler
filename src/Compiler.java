@@ -1,7 +1,7 @@
 import ast.CompUnitNode;
 import frontEnd.Lexer;
 import frontEnd.Parser;
-import semantic.SemanticAnalyzer;
+//import semantic.SemanticAnalyzer;
 import symbol.Symbol;
 import symbol.SymbolTable;
 import token.TokenManager;
@@ -25,18 +25,13 @@ public class Compiler {
             Parser parser = Parser.getInstance();
             // 进行语法分析，生成 AST
             CompUnitNode compUnitNode = parser.parseCompUnit();
-            // 进行语义分析
-            SemanticAnalyzer semanticAnalyzer = new SemanticAnalyzer();
-            semanticAnalyzer.analyze(compUnitNode);
+//             进行语义分析
+//            SemanticAnalyzer semanticAnalyzer = new SemanticAnalyzer();
+//            semanticAnalyzer.analyze(compUnitNode);
             // 输出错误信息到 error.txt
             ErrorHandler.getInstance().outputErrors();
 
-            // 如果没有语义错误，输出符号表信息到 symbol.txt
-            if (!semanticAnalyzer.hasSemanticError()) {
-                SymbolTable symbolTable = semanticAnalyzer.getSymbolTable();
-                List<Symbol> symbols = symbolTable.getAllSymbols();
-                OutputUtils.outputSymbols(symbols);
-            }
+
         } catch (Exception e) {
             System.err.println(e.getMessage());
         }

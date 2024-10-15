@@ -2,6 +2,8 @@ package ast;
 
 import token.Token;
 
+import java.util.List;
+
 /**
  * 常量定义节点
  * 对应文法：ConstDef → Ident [ '[' ConstExp ']' ] '=' ConstInitVal
@@ -9,17 +11,17 @@ import token.Token;
 public class ConstDefNode {
     private String ident; // 标识符名称
     private Token token;
-    private ConstExpNode constExpNode; // 可选的数组大小
+    private List<ConstExpNode> constExpNodes; // 数组维度列表
     private ConstInitValNode constInitValNode; // 常量初值
 
     public Token getToken() {
         return token;
     }
 
-    public ConstDefNode(Token token, ConstExpNode constExpNode, ConstInitValNode constInitValNode) {
+    public ConstDefNode(Token token,  List<ConstExpNode> constExpNodes, ConstInitValNode constInitValNode) {
         this.token = token;
         this.ident = token.getValue();
-        this.constExpNode = constExpNode;
+        this.constExpNodes = constExpNodes;
         this.constInitValNode = constInitValNode;
     }
 
@@ -27,8 +29,8 @@ public class ConstDefNode {
         return ident;
     }
 
-    public ConstExpNode getConstExpNode() {
-        return constExpNode;
+    public List<ConstExpNode> getConstExpNodes() {
+        return constExpNodes;
     }
 
     public ConstInitValNode getConstInitValNode() {
@@ -37,7 +39,7 @@ public class ConstDefNode {
 
     public void print() {
         System.out.println("IDENFR " + ident);
-        if (constExpNode != null) {
+        for (ConstExpNode constExpNode : constExpNodes) {
             System.out.println("LBRACK [");
             constExpNode.print();
             System.out.println("RBRACK ]");
@@ -45,6 +47,6 @@ public class ConstDefNode {
         System.out.println("ASSIGN =");
         constInitValNode.print();
         System.out.println("<ConstDef>");
-
     }
+
 }
