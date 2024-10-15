@@ -11,17 +11,17 @@ import java.util.List;
 public class ConstDefNode {
     private String ident; // 标识符名称
     private Token token;
-    private List<ConstExpNode> constExpNodes; // 数组维度列表
+    private ConstExpNode constExpNode; // 数组维度列表
     private ConstInitValNode constInitValNode; // 常量初值
 
     public Token getToken() {
         return token;
     }
 
-    public ConstDefNode(Token token,  List<ConstExpNode> constExpNodes, ConstInitValNode constInitValNode) {
+    public ConstDefNode(Token token,  ConstExpNode constExpNode, ConstInitValNode constInitValNode) {
         this.token = token;
         this.ident = token.getValue();
-        this.constExpNodes = constExpNodes;
+        this.constExpNode = constExpNode;
         this.constInitValNode = constInitValNode;
     }
 
@@ -29,8 +29,8 @@ public class ConstDefNode {
         return ident;
     }
 
-    public List<ConstExpNode> getConstExpNodes() {
-        return constExpNodes;
+    public ConstExpNode getConstExpNode() {
+        return constExpNode;
     }
 
     public ConstInitValNode getConstInitValNode() {
@@ -39,11 +39,11 @@ public class ConstDefNode {
 
     public void print() {
         System.out.println("IDENFR " + ident);
-        for (ConstExpNode constExpNode : constExpNodes) {
+
             System.out.println("LBRACK [");
             constExpNode.print();
             System.out.println("RBRACK ]");
-        }
+
         System.out.println("ASSIGN =");
         constInitValNode.print();
         System.out.println("<ConstDef>");

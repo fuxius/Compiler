@@ -203,12 +203,11 @@ public class Parser {
         // 常量定义 ConstDef → Ident { '[' ConstExp ']' } '=' ConstInitVal
         if (checkToken(TokenType.IDENFR)) {
             Token identToken = match(TokenType.IDENFR);
-            List<ConstExpNode> constExpNodes = new ArrayList<>();
-            // 解析零个或多个 '[' ConstExp ']'
-            while (checkToken(TokenType.LBRACK)) {
+            ConstExpNode constExpNode = null;
+            // 解析零个或一个 '[' ConstExp ']'
+            if (checkToken(TokenType.LBRACK)) {
                 match(TokenType.LBRACK); // 匹配'['
-                ConstExpNode constExpNode = parseConstExp();
-                constExpNodes.add(constExpNode);
+                constExpNode = parseConstExp();
                 if (!checkToken(TokenType.RBRACK)) {
                     reportError(prevToken, ErrorType.MISSING_RIGHT_BRACE); // 缺少']'，使用prevToken
                 } else {
@@ -218,7 +217,7 @@ public class Parser {
             match(TokenType.ASSIGN); // 匹配'='
             ConstInitValNode constInitValNode = parseConstInitVal();
             outputGrammar("<ConstDef>");
-            return new ConstDefNode(identToken, constExpNodes, constInitValNode);
+            return new ConstDefNode(identToken, constExpNode, constInitValNode);
         } else {
             reportError(currentToken, ErrorType.UNDEFINED_IDENT);
             return null;
