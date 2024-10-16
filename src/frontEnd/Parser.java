@@ -197,7 +197,7 @@ public class Parser {
         }
     }
 
-    // 解析ConstDef
+
     // 解析ConstDef
     private ConstDefNode parseConstDef() {
         // 常量定义 ConstDef → Ident { '[' ConstExp ']' } '=' ConstInitVal
@@ -640,6 +640,7 @@ public class Parser {
 
     // 解析Block
     private BlockNode parseBlock() {
+        Token RbraceToken = null;
         match(TokenType.LBRACE); // 匹配'{'
         List<BlockItemNode> blockItemNodes = new ArrayList<>();
         while (!checkToken(TokenType.RBRACE) && currentToken != null) {
@@ -651,10 +652,10 @@ public class Parser {
         if (!checkToken(TokenType.RBRACE)) {
             reportError(prevToken, ErrorType.MISSING_RIGHT_BRACE); // 缺少'}'，使用prevToken
         } else {
-            match(TokenType.RBRACE); // 匹配'}'
+            RbraceToken = match(TokenType.RBRACE); // 匹配'}'
         }
         outputGrammar("<Block>");
-        return new BlockNode(blockItemNodes);
+        return new BlockNode(blockItemNodes,RbraceToken);
     }
 
     // 解析BlockItem
@@ -938,7 +939,7 @@ public class Parser {
 
     // 解析MainFuncDef
     private MainFuncDefNode parseMainFuncDef() {
-        match(TokenType.INTTK); // 匹配'int'
+        Token Inttoken = match(TokenType.INTTK); // 匹配'int'
         match(TokenType.MAINTK); // 匹配'main'
         match(TokenType.LPARENT); // 匹配'('
         if (!checkToken(TokenType.RPARENT)) {
@@ -948,7 +949,7 @@ public class Parser {
         }
         BlockNode blockNode = parseBlock();
         outputGrammar("<MainFuncDef>");
-        return new MainFuncDefNode(blockNode);
+        return new MainFuncDefNode(blockNode,Inttoken);
     }
 
     // 关闭 parser.txt 文件

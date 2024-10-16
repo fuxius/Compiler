@@ -2,36 +2,26 @@ package symbol;
 
 import java.util.*;
 
-/**
- * 符号表管理类，负责管理符号表栈和作用域信息。
- */
 public class SymbolTable {
-    // 符号表栈，每个作用域对应一个符号表（Map），键为符号名，值为符号对象
-    private List<Map<String, Symbol>> symbolTableStack = new ArrayList<>();
 
-    // 作用域序号计数器，初始为1（全局作用域）
-    private int scopeCounter = 1;
+    private Scope currentScope;
+    private int scopeCounter = 1; // 从1开始，表示全局作用域
 
-    // 记录每个作用域的序号，用于输出时的排序
-    private List<Integer> scopeLevels = new ArrayList<>();
-
-    // 符号声明顺序记录，作用域序号 -> 符号列表（按声明顺序）
+    // 记录每个作用域的符号列表，按作用域序号索引
     private Map<Integer, List<Symbol>> symbolsInScope = new HashMap<>();
 
     public SymbolTable() {
         // 初始化全局作用域
-        symbolTableStack.add(new LinkedHashMap<>());
-        scopeLevels.add(scopeCounter);
+        currentScope = new Scope(null, scopeCounter);
         symbolsInScope.put(scopeCounter, new ArrayList<>());
     }
 
     /**
-     * 进入新作用域，作用域序号加1
+     * 进入新作用域
      */
     public void enterScope() {
         scopeCounter++;
-        symbolTableStack.add(new LinkedHashMap<>());
-        scopeLevels.add(scopeCounter);
+        currentScope = new Scope(currentScope, scopeCounter);
         symbolsInScope.put(scopeCounter, new ArrayList<>());
     }
 
@@ -39,9 +29,11 @@ public class SymbolTable {
      * 退出当前作用域
      */
     public void exitScope() {
-        if (symbolTableStack.size() > 0) {
-            symbolTableStack.remove(symbolTableStack.size() - 1);
-            scopeLevels.remove(scopeLevels.size() - 1);
+        if (currentScope.getParentScope() != null) {
+            currentScope = currentScope.getParentScope();
+        } else {
+            // 已经在全局作用域，无法再退出
+            System.err.println("Cannot exit the global scope.");
         }
     }
 
@@ -49,41 +41,35 @@ public class SymbolTable {
      * 获取当前作用域的序号
      */
     public int getCurrentScopeLevel() {
-        if (scopeLevels.size() > 0) {
-            return scopeLevels.get(scopeLevels.size() - 1);
-        }
-        return 1; // 默认返回全局作用域
+        return currentScope.getScopeLevel();
     }
 
     /**
      * 在当前作用域添加符号
      */
     public void addSymbol(Symbol symbol) {
-        Map<String, Symbol> currentScope = symbolTableStack.get(symbolTableStack.size() - 1);
-        currentScope.put(symbol.getName(), symbol);
-
-        // 记录符号的声明顺序
-        int currentScopeLevel = getCurrentScopeLevel();
-        symbolsInScope.get(currentScopeLevel).add(symbol);
+        currentScope.getSymbols().put(symbol.getName(), symbol);
+        symbolsInScope.get(currentScope.getScopeLevel()).add(symbol);
     }
 
     /**
      * 在当前作用域查找符号（用于检测重定义）
      */
     public Symbol lookupInCurrentScope(String name) {
-        Map<String, Symbol> currentScope = symbolTableStack.get(symbolTableStack.size() - 1);
-        return currentScope.get(name);
+        return currentScope.getSymbols().get(name);
     }
 
     /**
      * 全局查找符号（用于变量和函数的使用）
      */
     public Symbol lookup(String name) {
-        for (int i = symbolTableStack.size() - 1; i >= 0; i--) {
-            Map<String, Symbol> scope = symbolTableStack.get(i);
-            if (scope.containsKey(name)) {
-                return scope.get(name);
+        Scope scope = currentScope;
+        while (scope != null) {
+            Symbol symbol = scope.getSymbols().get(name);
+            if (symbol != null) {
+                return symbol;
             }
+            scope = scope.getParentScope();
         }
         return null;
     }
@@ -101,5 +87,43 @@ public class SymbolTable {
             allSymbols.addAll(symbols);
         }
         return allSymbols;
+    }
+
+    /**
+     * 判断当前作用域是否为函数作用域
+     */
+    public boolean isCurrentScopeFunction() {
+        for (Symbol symbol : currentScope.getSymbols().values()) {
+            if (symbol.isFunction()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * 内部类，表示一个作用域
+     */
+    private static class Scope {
+        private Map<String, Symbol> symbols = new LinkedHashMap<>();
+        private Scope parentScope;
+        private int scopeLevel;
+
+        public Scope(Scope parentScope, int scopeLevel) {
+            this.parentScope = parentScope;
+            this.scopeLevel = scopeLevel;
+        }
+
+        public Map<String, Symbol> getSymbols() {
+            return symbols;
+        }
+
+        public Scope getParentScope() {
+            return parentScope;
+        }
+
+        public int getScopeLevel() {
+            return scopeLevel;
+        }
     }
 }

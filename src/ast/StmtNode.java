@@ -3,23 +3,23 @@ package ast;
 import token.Token;
 
 import java.util.List;
-
 /**
  * 语句节点
  * 对应文法：
  * Stmt → LVal '=' Exp ';' // i
- *       | [Exp] ';' // i
- *       | Block
- *       | 'if' '(' Cond ')' Stmt [ 'else' Stmt ] // j
- *       | 'for' '(' [ForStmt] ';' [Cond] ';' [ForStmt] ')' Stmt
- *       | 'break' ';' | 'continue' ';' // i
- *       | 'return' [Exp] ';' // i
- *       | LVal '=' 'getint''('')'';' // i j
- *       | LVal '=' 'getchar''('')'';' // i j
- *       | 'printf''('StringConst {','Exp}')'';' // i j
+ * | [Exp] ';' // i
+ * | Block
+ * | 'if' '(' Cond ')' Stmt [ 'else' Stmt ] // j
+ * | 'for' '(' [ForStmt] ';' [Cond] ';' [ForStmt] ')' Stmt
+ * | 'break' ';' | 'continue' ';' // i
+ * | 'return' [Exp] ';' // i
+ * | LVal '=' 'getint''('')'';' // i j
+ * | LVal '=' 'getchar''('')'';' // i j
+ * | 'printf''('StringConst {','Exp}')'';' // i j
  */
 public class StmtNode {
     // 不同类型的语句，可以根据需要添加更多字段
+    private StmtType stmtType;
     private LValNode lValNode;
     private ExpNode expNode;
     private BlockNode blockNode;
@@ -38,22 +38,27 @@ public class StmtNode {
     public StmtNode(LValNode lValNode, ExpNode expNode) {
         this.lValNode = lValNode;
         this.expNode = expNode;
+        this.stmtType = StmtType.ASSIGN;
     }
     public StmtNode() {
         // 初始化字段（如果需要）
+        this.stmtType = StmtType.NULL;
     }
     // 示例：[Exp] ';'
     public StmtNode(ExpNode expNode) {
+        this.stmtType = StmtType.EXP;
         this.expNode = expNode;
     }
 
     // 示例：Block
     public StmtNode(BlockNode blockNode) {
+        this.stmtType = StmtType.BLOCK;
         this.blockNode = blockNode;
     }
 
     // 示例：'if' '(' Cond ')' Stmt [ 'else' Stmt ]
     public StmtNode(CondNode condNode, StmtNode stmtNode1, StmtNode stmtNode2) {
+        this.stmtType = StmtType.IF;
         this.condNode = condNode;
         this.stmtNode1 = stmtNode1;
         this.stmtNode2 = stmtNode2;
@@ -61,6 +66,7 @@ public class StmtNode {
 
     // 示例：'break' ';' 或 'continue' ';'
     public StmtNode(Token token) {
+        this.stmtType = StmtType.BREAKorCONTINUE;
         this.token = token;
         this.keyword = token.getValue();
     }
@@ -74,12 +80,14 @@ public class StmtNode {
         this.token= token;
         this.keyword = token.getValue();
         this.expNode = expNode;
+        this.stmtType = StmtType.RETURN;
     }
 
     // 示例：LVal '=' 'getint' '(' ')' ';'
     public StmtNode(LValNode lValNode, String functionName) {
         this.lValNode = lValNode;
         this.keyword = functionName;
+        this.stmtType = StmtType.GET;
     }
 
     // 示例：'printf' '(' StringConst {',' Exp} ')' ';'
@@ -87,6 +95,7 @@ public class StmtNode {
         this.token = token;
         this.stringConst = token.getValue();
         this.expNodeList = expNodeList;
+        this.stmtType = StmtType.PRINTF;
     }
 
     // 示例：'for' '(' [ForStmt] ';' [Cond] ';' [ForStmt] ')' Stmt
@@ -95,8 +104,11 @@ public class StmtNode {
         this.condNode = condNode;
         this.forStmtNode2 = forStmtNode2;
         this.stmtNode1 = stmtNode1;
+        this.stmtType = StmtType.FOR;
     }
-
+    public StmtType getStmtType() {
+        return stmtType;
+    }
     public LValNode getlValNode() {
         return lValNode;
     }
@@ -140,7 +152,6 @@ public class StmtNode {
     public BlockNode getBlockNode() {
         return blockNode;
     }
-
     public void print() {
         if (lValNode != null && expNode != null && keyword == null) {
             // LVal '=' Exp ';'
@@ -231,4 +242,5 @@ public class StmtNode {
         }
         // 添加更多的情况
     }
+
 }

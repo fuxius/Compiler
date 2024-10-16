@@ -2,6 +2,7 @@ import ast.CompUnitNode;
 import frontEnd.Lexer;
 import frontEnd.Parser;
 //import semantic.SemanticAnalyzer;
+import semantic.SemanticAnalyzer;
 import symbol.Symbol;
 import symbol.SymbolTable;
 import token.TokenManager;
@@ -26,8 +27,8 @@ public class Compiler {
             // 进行语法分析，生成 AST
             CompUnitNode compUnitNode = parser.parseCompUnit();
 //             进行语义分析
-//            SemanticAnalyzer semanticAnalyzer = new SemanticAnalyzer();
-//            semanticAnalyzer.analyze(compUnitNode);
+            SemanticAnalyzer semanticAnalyzer = new SemanticAnalyzer();
+            semanticAnalyzer.analyze(compUnitNode);
             // 输出错误信息到 error.txt
             ErrorHandler.getInstance().outputErrors();
 

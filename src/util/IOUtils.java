@@ -30,4 +30,17 @@ public class IOUtils {
             System.err.println("Error writing to file: " + e.getMessage());
         }
     }
+    private static final String FILE_PATH = "symbol.txt";
+
+    // 静态方法用于将内容写入 symbol.txt
+    public static void writeToFile(String filePath, List<String> lines) {
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(filePath))) {
+            for (String line : lines) {
+                writer.write(line);
+                writer.newLine();
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
 }

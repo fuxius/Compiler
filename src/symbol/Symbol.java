@@ -25,4 +25,8 @@ public class Symbol {
     public String getTypeName() {
         return typeName;
     }
+    public boolean isFunction() {
+        // 这里假设 typeName 为 "function" 表示函数类型
+        return "VoidFunc".equalsIgnoreCase(typeName) || "CharFunc".equalsIgnoreCase(typeName) || "IntFunc".equalsIgnoreCase(typeName);
+    }
 }

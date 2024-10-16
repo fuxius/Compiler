@@ -1,5 +1,7 @@
 package ast;
 
+import token.Token;
+
 import java.util.List;
 
 /**
@@ -8,8 +10,14 @@ import java.util.List;
  */
 public class BlockNode {
     private List<BlockItemNode> blockItemNodes;
+    private Token token;
 
-    public BlockNode(List<BlockItemNode> blockItemNodes) {
+    public Token getToken() {
+        return token;
+    }
+
+    public BlockNode(List<BlockItemNode> blockItemNodes, Token token) {
+        this.token = token;
         this.blockItemNodes = blockItemNodes;
     }
 
