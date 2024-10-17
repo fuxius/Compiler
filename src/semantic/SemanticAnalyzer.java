@@ -3,8 +3,10 @@ package semantic;
 import ast.*;
 import error.ErrorHandler;
 import error.ErrorType;
+import frontEnd.Parser;
 import symbol.*;
 import token.Token;
+import token.TokenManager;
 import token.TokenType;
 import util.IOUtils;
 
@@ -19,6 +21,12 @@ import java.util.Objects;
  * 编译单元 CompUnit → {Decl} {FuncDef} MainFuncDef
  */
 public class SemanticAnalyzer {
+    private static final SemanticAnalyzer instance = new SemanticAnalyzer();
+    private List<String> parserOutputs = new ArrayList<>();
+
+    public static SemanticAnalyzer getInstance() {
+        return instance;
+    }
     private SymbolTable symbolTable; // 符号表
     private ErrorHandler errorHandler; // 错误处理器
     private int scopeLevel = 1; // 当前作用域层级，初始为全局作用域1

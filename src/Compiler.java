@@ -26,8 +26,8 @@ public class Compiler {
             Parser parser = Parser.getInstance();
             // 进行语法分析，生成 AST
             CompUnitNode compUnitNode = parser.parseCompUnit();
-//             进行语义分析
-            SemanticAnalyzer semanticAnalyzer = new SemanticAnalyzer();
+            //进行语义分析
+            SemanticAnalyzer semanticAnalyzer = SemanticAnalyzer.getInstance();
             semanticAnalyzer.analyze(compUnitNode);
             // 输出错误信息到 error.txt
             ErrorHandler.getInstance().outputErrors();
