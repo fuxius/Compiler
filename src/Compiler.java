@@ -1,17 +1,12 @@
 import ast.CompUnitNode;
 import frontEnd.Lexer;
 import frontEnd.Parser;
-//import semantic.SemanticAnalyzer;
-import semantic.SemanticAnalyzer;
-import symbol.Symbol;
-import symbol.SymbolTable;
-import token.TokenManager;
+//import frontEnd.SemanticAnalyzer;
+import frontEnd.SemanticAnalyzer;
 import error.ErrorHandler;
-import util.OutputUtils;
 
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.List;
 
 public class Compiler {
     public static void main(String[] args) {

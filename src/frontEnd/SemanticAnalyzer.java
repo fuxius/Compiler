@@ -1,20 +1,16 @@
-package semantic;
+package frontEnd;
 
 import ast.*;
 import error.ErrorHandler;
 import error.ErrorType;
-import frontEnd.Parser;
 import symbol.*;
 import token.Token;
-import token.TokenManager;
 import token.TokenType;
 import util.IOUtils;
 
-import javax.lang.model.type.NullType;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Objects;
 
 /**
  * 语义分析器，遍历AST，建立符号表并检测语义错误
