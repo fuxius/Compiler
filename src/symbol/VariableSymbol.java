@@ -1,23 +1,28 @@
 package symbol;
 
-/**
- * 变量符号类，包含变量的特有信息
- */
-public class VariableSymbol extends Symbol {
-    private boolean isConst; // 是否为常量
-    private int dimension;   // 数组维度，0表示非数组
+import symbol.Symbol;
 
-    public VariableSymbol(String name, int scopeLevel, String typeName, boolean isConst, int dimension) {
+public class VariableSymbol extends Symbol {
+    private String baseType; // 基本类型："int" 或 "char"
+    private int dimension;   // 维数
+    private boolean isConst; // 是否为常量
+
+    public VariableSymbol(String name, int scopeLevel, String typeName, boolean isConst, int dimension, String baseType) {
         super(name, scopeLevel, typeName);
         this.isConst = isConst;
         this.dimension = dimension;
+        this.baseType = baseType;
     }
 
-    public boolean isConst() {
-        return isConst;
+    public String getBaseType() {
+        return baseType;
     }
 
     public int getDimension() {
         return dimension;
+    }
+
+    public boolean isConst() {
+        return isConst;
     }
 }

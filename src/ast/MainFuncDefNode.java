@@ -11,7 +11,7 @@ public class MainFuncDefNode {
     private Token token;
 
     public MainFuncDefNode(BlockNode blockNode,Token token) {
-
+        this.token = token;
         this.blockNode = blockNode;
     }
 

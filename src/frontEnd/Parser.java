@@ -152,7 +152,7 @@ public class Parser {
             VarDeclNode varDeclNode = parseVarDecl();
             return new DeclNode(varDeclNode);
         } else {
-            reportError(currentToken, ErrorType.UNDEFINED_IDENT);
+//            reportError(currentToken, ErrorType.UNDEFINED_IDENT);
             return null;
         }
     }
@@ -192,7 +192,7 @@ public class Parser {
             Token CharToken = match(TokenType.CHARTK);
             return new BTypeNode(CharToken);
         } else {
-            reportError(currentToken, ErrorType.UNDEFINED_IDENT);
+//            reportError(currentToken, ErrorType.UNDEFINED_IDENT);
             return null;
         }
     }
@@ -209,7 +209,7 @@ public class Parser {
                 match(TokenType.LBRACK); // 匹配'['
                 constExpNode = parseConstExp();
                 if (!checkToken(TokenType.RBRACK)) {
-                    reportError(prevToken, ErrorType.MISSING_RIGHT_BRACE); // 缺少']'，使用prevToken
+                    reportError(prevToken, ErrorType.MISSING_RIGHT_RBRACK); // 缺少']'，使用prevToken
                 } else {
                     match(TokenType.RBRACK); // 匹配']'
                 }
@@ -219,7 +219,7 @@ public class Parser {
             outputGrammar("<ConstDef>");
             return new ConstDefNode(identToken, constExpNode, constInitValNode);
         } else {
-            reportError(currentToken, ErrorType.UNDEFINED_IDENT);
+//            reportError(currentToken, ErrorType.UNDEFINED_IDENT);
             return null;
         }
     }
@@ -244,11 +244,8 @@ public class Parser {
                     }
                 }
             }
-            if (!checkToken(TokenType.RBRACE)) {
-                reportError(prevToken, ErrorType.MISSING_RIGHT_BRACE); // 缺少'}'，使用prevToken
-            } else {
-                match(TokenType.RBRACE); // 匹配'}'
-            }
+            match(TokenType.RBRACE); // 匹配'}'
+
             outputGrammar("<ConstInitVal>");
             return new ConstInitValNode(constExpNodeList);
         } else if (checkToken(TokenType.STRCON)) {
@@ -311,7 +308,7 @@ public class Parser {
                 // 函数调用
                 match(TokenType.LPARENT); // 匹配'('
                 FuncRParamsNode funcRParamsNode = null;
-                if (!checkToken(TokenType.RPARENT)) {
+                if (isExpStartingToken(currentToken)) {
                     funcRParamsNode = parseFuncRParams();
                 }
                 if (!checkToken(TokenType.RPARENT)) {
@@ -345,11 +342,30 @@ public class Parser {
                 return unaryExpNode;
             } else {
                 // 无法解析的表达式，报告错误
-                reportError(currentToken, ErrorType.ILLEGAL_SYMBOL);
+//                reportError(currentToken, ErrorType.ILLEGAL_SYMBOL);
                 return null;
             }
         }
     }
+    private boolean isExpStartingToken(Token token) {
+        if (token == null) {
+            return false;
+        }
+        switch (token.getType()) {
+            case IDENFR: // 标识符
+            case INTCON: // 整数常量
+            case CHRCON: // 字符常量
+            case STRCON: // 字符串常量
+            case LPARENT: // 左括号
+            case PLUS:    // 加号
+            case MINU:    // 减号
+            case NOT:     // 逻辑非
+                return true;
+            default:
+                return false;
+        }
+    }
+
     // 解析UnaryOp
     private UnaryOpNode parseUnaryOp() {
        Token opToken = currentToken;
@@ -392,7 +408,7 @@ public class Parser {
             outputGrammar("<PrimaryExp>");
             return primaryExpNode;
         } else {
-            reportError(currentToken, ErrorType.UNDEFINED_IDENT);
+//            reportError(currentToken, ErrorType.UNDEFINED_IDENT);
             return null;
         }
     }
@@ -417,7 +433,7 @@ public class Parser {
 
         Token identToken = match(TokenType.IDENFR);
         if (identToken == null) {
-            reportError(currentToken, ErrorType.UNDEFINED_IDENT);
+//            reportError(currentToken, ErrorType.UNDEFINED_IDENT);
             return null;
         }
 
@@ -426,7 +442,7 @@ public class Parser {
             match(TokenType.LBRACK); // 匹配'['
             expNode = parseExp();
             if (!checkToken(TokenType.RBRACK)) {
-                reportError(prevToken, ErrorType.MISSING_RIGHT_BRACE); // 缺少']'，使用prevToken
+                reportError(prevToken, ErrorType.MISSING_RIGHT_RBRACK); // 缺少']'，使用prevToken
             } else {
                 match(TokenType.RBRACK); // 匹配']'
             }
@@ -495,7 +511,7 @@ public class Parser {
                 match(TokenType.LBRACK); // 匹配'['
                 constExpNode = parseConstExp();
                 if (!checkToken(TokenType.RBRACK)) {
-                    reportError(prevToken, ErrorType.MISSING_RIGHT_BRACE); // 缺少']'，使用prevToken
+                    reportError(prevToken, ErrorType.MISSING_RIGHT_RBRACK); // 缺少']'，使用prevToken
                 } else {
                     match(TokenType.RBRACK); // 匹配']'
                 }
@@ -509,7 +525,7 @@ public class Parser {
             outputGrammar("<VarDef>");
             return varDefNode;
         } else {
-            reportError(currentToken, ErrorType.UNDEFINED_IDENT);
+//            reportError(currentToken, ErrorType.UNDEFINED_IDENT);
             return null;
         }
     }
@@ -533,11 +549,9 @@ public class Parser {
                     }
                 }
             }
-            if (!checkToken(TokenType.RBRACE)) {
-                reportError(prevToken, ErrorType.MISSING_RIGHT_BRACE); // 缺少'}'，使用prevToken
-            } else {
-                match(TokenType.RBRACE); // 匹配'}'
-            }
+
+            match(TokenType.RBRACE); // 匹配'}'
+
             outputGrammar("<InitVal>");
             return new InitValNode(expNodeList);
         } else if (checkToken(TokenType.STRCON)) {
@@ -572,7 +586,7 @@ public class Parser {
             outputGrammar("<FuncDef>");
             return new FuncDefNode(funcTypeNode, identToken, funcFParamsNode, blockNode);
         } else {
-            reportError(currentToken, ErrorType.UNDEFINED_IDENT);
+//            reportError(currentToken, ErrorType.UNDEFINED_IDENT);
             return null;
         }
     }
@@ -592,7 +606,7 @@ public class Parser {
             outputGrammar("<FuncType>");
             return new FuncTypeNode(charToken);
         } else {
-            reportError(currentToken, ErrorType.UNDEFINED_IDENT);
+//            reportError(currentToken, ErrorType.UNDEFINED_IDENT);
             return null;
         }
     }
@@ -624,7 +638,7 @@ public class Parser {
             if (checkToken(TokenType.LBRACK)) {
                 match(TokenType.LBRACK); // 匹配'['
                 if (!checkToken(TokenType.RBRACK)) {
-                    reportError(prevToken, ErrorType.MISSING_RIGHT_BRACE); // 缺少']'，使用prevToken
+                    reportError(prevToken, ErrorType.MISSING_RIGHT_RBRACK); // 缺少']'，使用prevToken
                 } else {
                     match(TokenType.RBRACK); // 匹配']'
                 }
@@ -633,7 +647,7 @@ public class Parser {
             outputGrammar("<FuncFParam>");
             return new FuncFParamNode(bTypeNode, identToken, isArray);
         } else {
-            reportError(currentToken, ErrorType.UNDEFINED_IDENT);
+//            reportError(currentToken, ErrorType.UNDEFINED_IDENT);
             return null;
         }
     }
@@ -649,11 +663,9 @@ public class Parser {
                 blockItemNodes.add(blockItemNode);
             }
         }
-        if (!checkToken(TokenType.RBRACE)) {
-            reportError(prevToken, ErrorType.MISSING_RIGHT_BRACE); // 缺少'}'，使用prevToken
-        } else {
-            RbraceToken = match(TokenType.RBRACE); // 匹配'}'
-        }
+
+        RbraceToken = match(TokenType.RBRACE); // 匹配'}'
+
         outputGrammar("<Block>");
         return new BlockNode(blockItemNodes,RbraceToken);
     }
@@ -767,7 +779,7 @@ public class Parser {
             match(TokenType.PRINTFTK); // 匹配'printf'
             match(TokenType.LPARENT); // 匹配'('
             if (!checkToken(TokenType.STRCON)) {
-                reportError(currentToken, ErrorType.UNDEFINED_IDENT); // 缺少格式字符串，使用currentToken
+//                reportError(currentToken, ErrorType.UNDEFINED_IDENT); // 缺少格式字符串，使用currentToken
             }
             Token formatStringToken = match(TokenType.STRCON);
             List<ExpNode> expNodes = new ArrayList<>();
@@ -867,7 +879,7 @@ public class Parser {
             outputGrammar("<ForStmt>");
             return new ForStmtNode(lValNode, expNode);
         } else {
-            reportError(currentToken, ErrorType.UNDEFINED_IDENT);
+//            reportError(currentToken, ErrorType.UNDEFINED_IDENT);
             return null;
         }
     }

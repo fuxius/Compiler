@@ -23,6 +23,7 @@ public class SemanticAnalyzer {
     private ErrorHandler errorHandler; // 错误处理器
     private int scopeLevel = 1; // 当前作用域层级，初始为全局作用域1
     private int loopCount = 0; // 循环嵌套层数，用于检测错误类型'm'
+    private FunctionSymbol currentFunction = null;
 
     public SemanticAnalyzer() {
         this.symbolTable = new SymbolTable();
@@ -92,10 +93,12 @@ public class SemanticAnalyzer {
         // 检查名称重定义（错误类型 'b'）
         if (symbolTable.lookupInCurrentScope(name) != null) {
             errorHandler.reportError(lineNumber, ErrorType.REDEFINED_IDENT);
+            return;
         } else {
             // 确定类型名称
             String typeName = getTypeName(bTypeToken, isConst, dimension);
-            VariableSymbol symbol = new VariableSymbol(name, symbolTable.getCurrentScopeLevel(), typeName, isConst, dimension);
+            String baseName = getBaseType(bTypeToken);
+            VariableSymbol symbol = new VariableSymbol(name, symbolTable.getCurrentScopeLevel(), typeName, isConst, dimension,baseName);
             symbolTable.addSymbol(symbol);
         }
 
@@ -150,7 +153,8 @@ public class SemanticAnalyzer {
         } else {
             // 确定类型名称
             String typeName = getTypeName(bTypeToken, isConst, dimension);
-            VariableSymbol symbol = new VariableSymbol(name, symbolTable.getCurrentScopeLevel(), typeName, isConst, dimension);
+            String baseName = getBaseType(bTypeToken);
+            VariableSymbol symbol = new VariableSymbol(name, symbolTable.getCurrentScopeLevel(), typeName, isConst, dimension,baseName);
             symbolTable.addSymbol(symbol);
         }
 
@@ -204,10 +208,27 @@ public class SemanticAnalyzer {
             String typeName = getFuncTypeName(funcTypeToken);
             List<VariableSymbol> params = new ArrayList<>();
             if (funcDefNode.getFuncFParamsNode() != null) {
-
+                // 获取参数列表
+                List<FuncFParamNode> paramNodes = funcDefNode.getFuncFParamsNode().getFuncFParamNodes();
+                for (FuncFParamNode paramNode : paramNodes) {
+                    // 提取参数名称
+                    String paramName = paramNode.getToken().getValue();
+                    // 获取维度信息
+                    int dimension = paramNode.isArray() == true ?1:0;
+                    // 判断是否为常量，函数参数一般不是常量
+                    boolean isConst = false;
+                    // 获取参数类型
+                    String paramType = getTypeName(paramNode.getbTypeNode().getToken(),false,dimension);
+                    String baseName = getBaseType(paramNode.getbTypeNode().getToken());
+                    // 创建参数符号
+                    VariableSymbol paramSymbol = new VariableSymbol(paramName, symbolTable.getCurrentScopeLevel(), paramType, isConst, dimension,baseName);
+                    // 添加到参数列表
+                    params.add(paramSymbol);
+                }
             }
             FunctionSymbol functionSymbol = new FunctionSymbol(name, symbolTable.getCurrentScopeLevel(), typeName, funcTypeToken.getValue(), params);
             symbolTable.addSymbol(functionSymbol);
+            currentFunction = functionSymbol;
         }
 
         // 进入函数作用域
@@ -217,10 +238,11 @@ public class SemanticAnalyzer {
             traverseFuncFParams(funcDefNode.getFuncFParamsNode(), funcDefNode.getFuncTypeNode().getToken());
         }
         // 遍历函数体 Block → '{' { BlockItem } '}'
-        traverseBlock(funcDefNode.getBlockNode(), funcTypeToken);
+        traverseBlock(funcDefNode.getBlockNode(), funcTypeToken,true);
         // 退出函数作用域
         symbolTable.exitScope();
-
+        // 清除 currentFunction
+        currentFunction = null;
 
 
 
@@ -237,15 +259,18 @@ public class SemanticAnalyzer {
         // 添加 main 函数符号
         FunctionSymbol mainFunction = new FunctionSymbol(name, symbolTable.getCurrentScopeLevel(), typeName, "int", new ArrayList<>());
 //        symbolTable.addSymbol(mainFunction);
+        currentFunction = mainFunction;
 
         // 进入 main 函数作用域
         symbolTable.enterScope(); // scopeLevel + 1
 
         // 遍历函数体 Block → '{' { BlockItem } '}'
-        traverseBlock(mainFuncDefNode.getBlockNode(), mainFuncDefNode.getToken());
+        traverseBlock(mainFuncDefNode.getBlockNode(), mainFuncDefNode.getToken(),true);
 
         // 退出 main 函数作用域
         symbolTable.exitScope();
+        currentFunction = null;
+
     }
 
     /**
@@ -275,7 +300,8 @@ public class SemanticAnalyzer {
         } else {
             // 确定类型名称
             String typeName = getTypeName(bTypeToken, isConst, dimension);
-            VariableSymbol symbol = new VariableSymbol(name, symbolTable.getCurrentScopeLevel(), typeName, isConst, dimension);
+            String baseName = getBaseType(bTypeToken);
+            VariableSymbol symbol = new VariableSymbol(name, symbolTable.getCurrentScopeLevel(), typeName, isConst, dimension,baseName);
             symbolTable.addSymbol(symbol);
         }
 
@@ -285,17 +311,14 @@ public class SemanticAnalyzer {
      * 遍历代码块
      * Block → '{' { BlockItem } '}'
      */
-    private void traverseBlock(BlockNode blockNode, Token funcTypeToken) {
-        // 进入新的作用域
-//        symbolTable.enterScope(); // scopeLevel + 1
-
+    private void traverseBlock(BlockNode blockNode, Token funcTypeToken,boolean isOutermostBlock) {
         // 遍历代码块项 BlockItem → Decl | Stmt
         for (BlockItemNode blockItemNode : blockNode.getBlockItemNodes()) {
             traverseBlockItem(blockItemNode, funcTypeToken);
         }
 
-        // 检查有返回值的函数是否缺少 return 语句（错误类型 'g'）
-        if (isInFunction() && isFuncTypeWithReturn(funcTypeToken)) {
+        // 若此时处于函数体最外层，检查有返回值的函数是否缺少 return 语句（错误类型 'g'）
+        if (isOutermostBlock && isInFunction() && isFuncTypeWithReturn(funcTypeToken)) {
             // 获取代码块中的最后一个 BlockItemNode
             List<BlockItemNode> blockItems = blockNode.getBlockItemNodes();
             if (blockItems.isEmpty() ||
@@ -307,8 +330,6 @@ public class SemanticAnalyzer {
             }
         }
 
-        // 退出作用域
-//        symbolTable.exitScope();
     }
 
 
@@ -351,7 +372,7 @@ public class SemanticAnalyzer {
             case BLOCK:
                 symbolTable.enterScope();
                 // 代码块 Stmt → Block
-                traverseBlock(stmtNode.getBlockNode(), funcTypeToken);
+                traverseBlock(stmtNode.getBlockNode(), funcTypeToken,false);
                 symbolTable.exitScope();
                 break;
 
@@ -517,6 +538,7 @@ public class SemanticAnalyzer {
      * UnaryExp → PrimaryExp | Ident '(' [FuncRParams] ')' | UnaryOp UnaryExp
      */
     private void traverseUnaryExp(UnaryExpNode unaryExpNode) {
+        if(unaryExpNode == null)    return;
         if (unaryExpNode.getPrimaryExpNode() != null) {
             traversePrimaryExp(unaryExpNode.getPrimaryExpNode());
         } else if (unaryExpNode.getUnaryExpNode() != null) {
@@ -530,7 +552,9 @@ public class SemanticAnalyzer {
             if (symbol == null) {
                 // 检测错误类型 'c'
                 errorHandler.reportError(lineNumber, ErrorType.UNDEFINED_IDENT);
-            } else if (symbol instanceof FunctionSymbol) {
+                return;
+            }
+            if (symbol instanceof FunctionSymbol) {
                 FunctionSymbol functionSymbol = (FunctionSymbol) symbol;
                 int expectedParamCount = functionSymbol.getParameters() != null? functionSymbol.getParameters().size() : 0;
                 int actualParamCount = 0;
@@ -543,10 +567,47 @@ public class SemanticAnalyzer {
                     errorHandler.reportError(lineNumber, ErrorType.FUNC_PARAM_COUNT_MISMATCH);
                 } else {
                     // 检测函数参数类型不匹配（错误类型 'e'）
-                    // 由于类型系统复杂，简化处理或根据需要实现
+                    boolean typeMismatch = false;
+                    for (int i = 0; i < expectedParamCount; i++) {
+                        VariableSymbol formalParam = functionSymbol.getParameters().get(i);
+                        int formalParamDimension = formalParam.getDimension();
+                        String formalParamBaseType = formalParam.getBaseType();
+
+                        ExpNode actualParamExp = unaryExpNode.getFuncRParamsNode().getExpNodes().get(i);
+                        int actualParamDimension = getDimension(actualParamExp);
+                        String actualParamBaseType = getBaseType(actualParamExp);
+
+                        if (formalParamDimension != actualParamDimension) {
+                            typeMismatch = true;
+                            break;
+                        } else if (formalParamDimension == 0) {
+                            // 如果是标量类型，允许 int 和 char 之间的隐式转换
+                            if (!areTypesCompatible(formalParamBaseType, actualParamBaseType)) {
+                                typeMismatch = true;
+                                break;
+                            }
+                        } else {
+                            // 对于数组，基础类型必须完全匹配
+                            if (!formalParamBaseType.equals(actualParamBaseType)) {
+                                typeMismatch = true;
+                                break;
+                            }
+                        }
+                    }
+                    if (typeMismatch) {
+                        errorHandler.reportError(lineNumber, ErrorType.FUNC_PARAM_TYPE_MISMATCH);
+                    }
                 }
             }
         }
+    }
+    private boolean areTypesCompatible(String formalType, String actualType) {
+        // 对于标量类型，int 和 char 之间是兼容的
+        if ((formalType.equals("int") || formalType.equals("char")) &&
+                (actualType.equals("int") || actualType.equals("char"))) {
+            return true;
+        }
+        return formalType.equals(actualType);
     }
 
     /**
@@ -596,7 +657,7 @@ public class SemanticAnalyzer {
         if(lAndExpNode.getSingleEqExpNode() != null){
             traverseEqExp(lAndExpNode.getSingleEqExpNode());
         }else {
-            traverseEqExp(lAndExpNode.getSingleEqExpNode());
+            traverseEqExp(lAndExpNode.getEqExpNode());
             if (lAndExpNode.getlAndExpNode() != null) {
                 traverseLAndExp(lAndExpNode.getlAndExpNode());
             }
@@ -639,7 +700,7 @@ public class SemanticAnalyzer {
      */
     private boolean isInFunction() {
         // 当前作用域是否为函数作用域
-        return symbolTable.isCurrentScopeFunction();
+        return currentFunction != null;
     }
 
     /**
@@ -665,7 +726,7 @@ public class SemanticAnalyzer {
     private int countFormatSpecifiers(String formatString) {
         int count = 0;
         for (int i = 0; i < formatString.length() - 1; i++) {
-            if (formatString.charAt(i) == '%' && formatString.charAt(i + 1) == 'd') {
+            if (formatString.charAt(i) == '%' && (formatString.charAt(i + 1) == 'd'||formatString.charAt(i + 1) == 'c')) {
                 count++;
                 i++; // 跳过 'd'
             }
@@ -689,7 +750,9 @@ public class SemanticAnalyzer {
         }
         return baseType;
     }
-
+    private String getBaseType(Token bTypeToken) {
+        return bTypeToken.getType() == TokenType.INTTK ? "int" : "char";
+    }
     /**
      * 确定函数类型名称
      * FuncType → 'void' | 'int' | 'char'
@@ -703,6 +766,175 @@ public class SemanticAnalyzer {
             return "CharFunc";
         }
         return "UnknownFunc";
+    }
+    /**
+     * 获取表达式的基本类型
+     */
+    private String getBaseType(ExpNode expNode) {
+        if (expNode == null) {
+            return "error"; // 默认返回 error 类型
+        }
+        return getBaseType(expNode.getAddExpNode());
+    }
+
+    private String getBaseType(AddExpNode addExpNode) {
+        if (addExpNode == null) {
+            return "int";
+        }
+        if (addExpNode.getSingleMulExpNode() != null) {
+            return getBaseType(addExpNode.getSingleMulExpNode());
+        } else {
+            // 对于加减运算，结果为 int 类型
+            return "int";
+        }
+    }
+
+    private String getBaseType(MulExpNode mulExpNode) {
+        if (mulExpNode == null) {
+            return "int";
+        }
+        if (mulExpNode.getSingleUnaryExpNode() != null) {
+            return getBaseType(mulExpNode.getSingleUnaryExpNode());
+        } else {
+            // 对于乘除模运算，结果为 int 类型
+            return "int";
+        }
+    }
+
+    private String getBaseType(UnaryExpNode unaryExpNode) {
+        if (unaryExpNode == null) {
+            return "int";
+        }
+        if (unaryExpNode.getPrimaryExpNode() != null) {
+            return getBaseType(unaryExpNode.getPrimaryExpNode());
+        } else if (unaryExpNode.getUnaryExpNode() != null) {
+            return getBaseType(unaryExpNode.getUnaryExpNode());
+        } else if (unaryExpNode.getToken() != null) {
+            // 函数调用，需要查符号表获取返回类型
+            String funcName = unaryExpNode.getToken().getValue();
+            Symbol symbol = symbolTable.lookup(funcName);
+            if (symbol instanceof FunctionSymbol) {
+                FunctionSymbol funcSymbol = (FunctionSymbol) symbol;
+                return funcSymbol.getReturnType(); // 需要在 FunctionSymbol 中保存返回类型
+            }
+        }
+        return "error"; // 默认返回 error 类型
+    }
+
+    private String getBaseType(PrimaryExpNode primaryExpNode) {
+        if (primaryExpNode == null) {
+            return "int";
+        }
+        if (primaryExpNode.getExpNode() != null) {
+            return getBaseType(primaryExpNode.getExpNode());
+        } else if (primaryExpNode.getlValNode() != null) {
+            return getBaseType(primaryExpNode.getlValNode());
+        } else {
+            // 数字或字符常量，根据类型返回
+            if (primaryExpNode.getNumberNode() != null) {
+                return "int";
+            } else if (primaryExpNode.getCharacterNode() != null) {
+                return "char";
+            }
+        }
+        return "error"; // 默认返回 error 类型
+    }
+
+    private String getBaseType(LValNode lValNode) {
+        String name = lValNode.getToken().getValue();
+        Symbol symbol = symbolTable.lookup(name);
+        if (symbol instanceof VariableSymbol) {
+            return ((VariableSymbol) symbol).getBaseType();
+        }
+        return "error"; // 默认返回 error 类型
+    }
+    /**
+     * 获取表达式的维数
+     */
+    private int getDimension(ExpNode expNode) {
+        if (expNode == null) {
+            return 0;
+        }
+        return getDimension(expNode.getAddExpNode());
+    }
+
+    private int getDimension(AddExpNode addExpNode) {
+        if (addExpNode == null) {
+            return 0;
+        }
+        if (addExpNode.getSingleMulExpNode() != null) {
+            return getDimension(addExpNode.getSingleMulExpNode());
+        } else {
+            // 对于加减运算，结果为标量（维数为0）
+            return 0;
+        }
+    }
+
+    private int getDimension(MulExpNode mulExpNode) {
+        if (mulExpNode == null) {
+            return 0;
+        }
+        if (mulExpNode.getSingleUnaryExpNode() != null) {
+            return getDimension(mulExpNode.getSingleUnaryExpNode());
+        } else {
+            // 对于乘除模运算，结果为标量（维数为0）
+            return 0;
+        }
+    }
+
+    private int getDimension(UnaryExpNode unaryExpNode) {
+        if (unaryExpNode == null) {
+            return 0;
+        }
+        if (unaryExpNode.getPrimaryExpNode() != null) {
+            return getDimension(unaryExpNode.getPrimaryExpNode());
+        } else if (unaryExpNode.getUnaryExpNode() != null) {
+            // 一元运算，结果为标量
+            return 0;
+        } else if (unaryExpNode.getToken() != null) {
+            // 函数调用，需要根据函数的返回类型确定维数
+            String funcName = unaryExpNode.getToken().getValue();
+            Symbol symbol = symbolTable.lookup(funcName);
+            if (symbol instanceof FunctionSymbol) {
+                FunctionSymbol funcSymbol = (FunctionSymbol) symbol;
+                // 假设函数的返回类型维数为0（标量）
+                // 如果有多维数组返回类型，需要根据实际情况修改
+                return 0;
+            }
+        }
+        return 0;
+    }
+
+    private int getDimension(PrimaryExpNode primaryExpNode) {
+        if (primaryExpNode == null) {
+            return 0;
+        }
+        if (primaryExpNode.getExpNode() != null) {
+            return getDimension(primaryExpNode.getExpNode());
+        } else if (primaryExpNode.getlValNode() != null) {
+            return getDimension(primaryExpNode.getlValNode());
+        } else {
+            // 数字或字符常量，维数为0
+            return 0;
+        }
+    }
+
+    private int getDimension(LValNode lValNode) {
+        if (lValNode == null) {
+            return 0;
+        }
+        String name = lValNode.getToken().getValue();
+        Symbol symbol = symbolTable.lookup(name);
+        int varDimension = 0;
+        if (symbol != null && symbol instanceof VariableSymbol) {
+            varDimension = ((VariableSymbol) symbol).getDimension();
+        }
+        int indicesUsed = 0;
+        if (lValNode.getExpNode() != null) {
+            indicesUsed = 1;
+        }
+        int resultDimension = varDimension - indicesUsed;
+        return resultDimension >= 0 ? resultDimension : 0;
     }
 
     /**

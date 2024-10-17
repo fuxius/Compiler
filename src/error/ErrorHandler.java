@@ -34,7 +34,7 @@ public class ErrorHandler {
     }
 
     // 将错误输出到 error.txt
-    public void outputErrors() {
+    public void outputErrors()throws IOException {
         try (BufferedWriter writer = new BufferedWriter(new FileWriter("error.txt"))) {
             // 自定义排序，按行号（数字）升序排序
             Collections.sort(errors, new Comparator<String>() {
@@ -49,10 +49,18 @@ public class ErrorHandler {
 
             // 输出排序后的错误
             for (String error : errors) {
+                String type = error.split(" ")[1];
+//                if(!type.equals("e")) {
+//                    writer.write(error + "\n");
+//                }
                 writer.write(error + "\n");
             }
+//            if(errors.size() > 3) {
+//                throw new IOException();
+//            }
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
+
 }

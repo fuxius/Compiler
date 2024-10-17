@@ -11,7 +11,7 @@ public enum ErrorType {
     MODIFY_CONST("h"), // 不能改变常量的值
     MISSING_SEMICOLON("i"), // 缺少分号
     MISSING_RIGHT_BRACKET("j"), // 缺少右小括号
-    MISSING_RIGHT_BRACE("k"), // 缺少右大括号
+    MISSING_RIGHT_RBRACK("k"), // 缺少右中括号
     PRINTF_ARG_MISMATCH("l"), // printf中格式字符与表达式个数不匹配
     BREAK_CONTINUE_OUTSIDE_LOOP("m"); // 在非循环中使用break和continue语句
 
