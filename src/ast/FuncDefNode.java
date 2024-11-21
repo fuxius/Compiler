@@ -1,5 +1,6 @@
 package ast;
 
+import symbol.FunctionSymbol;
 import token.Token;
 
 /**
@@ -12,6 +13,15 @@ public class FuncDefNode {
     private Token token;
     private FuncFParamsNode funcFParamsNode; // 可选
     private BlockNode blockNode;
+    private FunctionSymbol functionSymbol;
+
+    public FunctionSymbol getFunctionSymbol() {
+        return functionSymbol;
+    }
+
+    public void setFunctionSymbol(FunctionSymbol functionSymbol) {
+        this.functionSymbol = functionSymbol;
+    }
 
     public Token getToken() {
         return token;

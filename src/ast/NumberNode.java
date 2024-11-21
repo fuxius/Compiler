@@ -18,9 +18,11 @@ public class NumberNode {
         this.token = token;
         this.intConst = token.getValue();
     }
-
-    public String getIntConst() {
-        return intConst;
+    public int evaluate(){
+        return Integer.parseInt(intConst);
+    }
+    public int getIntConst() {
+        return Integer.parseInt(intConst);
     }
 
     public void print() {

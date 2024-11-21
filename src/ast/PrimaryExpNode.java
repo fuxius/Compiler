@@ -62,4 +62,27 @@ public class PrimaryExpNode {
         }
         System.out.println("<PrimaryExp>");
     }
+    /**
+     * 计算 PrimaryExp 的值
+     * PrimaryExp → '(' Exp ')' | LVal | Number | Character
+     */
+    public int evaluate() {
+        // '(' Exp ')'
+        if (expNode != null) {
+            return expNode.evaluate();
+        }
+        // LVal
+        else if (lValNode != null) {
+            return lValNode.evaluate();
+        }
+        // Number
+        else if (numberNode != null) {
+            return numberNode.evaluate(); // 获取数字常量的值
+        }
+        // Character
+        else if (characterNode != null) {
+            return characterNode.evaluate(); // 获取字符常量的 ASCII 值
+        }
+        return 0; // 默认返回 0
+    }
 }

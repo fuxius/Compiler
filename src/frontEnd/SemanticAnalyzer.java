@@ -30,7 +30,7 @@ public class SemanticAnalyzer {
     private FunctionSymbol currentFunction = null;
 
     public SemanticAnalyzer() {
-        this.symbolTable = new SymbolTable();
+        this.symbolTable = SymbolTable.getInstance();
         this.errorHandler = ErrorHandler.getInstance();
     }
 
@@ -103,6 +103,7 @@ public class SemanticAnalyzer {
             String typeName = getTypeName(bTypeToken, isConst, dimension);
             String baseName = getBaseType(bTypeToken);
             VariableSymbol symbol = new VariableSymbol(name, symbolTable.getCurrentScopeLevel(), typeName, isConst, dimension,baseName);
+            constDefNode.setVariableSymbol(symbol);
             symbolTable.addSymbol(symbol);
         }
 
@@ -114,6 +115,7 @@ public class SemanticAnalyzer {
         // 处理常量初值 ConstInitVal → ConstExp | '{' [ ConstExp { ',' ConstExp } ] '}' | StringConst
         traverseConstInitVal(constDefNode.getConstInitValNode());
     }
+
 
     /**
      * 遍历常量初值
@@ -160,6 +162,7 @@ public class SemanticAnalyzer {
             String baseName = getBaseType(bTypeToken);
             VariableSymbol symbol = new VariableSymbol(name, symbolTable.getCurrentScopeLevel(), typeName, isConst, dimension,baseName);
             symbolTable.addSymbol(symbol);
+            varDefNode.setVariableSymbol(symbol);
         }
 
         // 处理数组维度中的常量表达式（如果有） ConstExp → AddExp
@@ -232,6 +235,7 @@ public class SemanticAnalyzer {
             }
             FunctionSymbol functionSymbol = new FunctionSymbol(name, symbolTable.getCurrentScopeLevel(), typeName, funcTypeToken.getValue(), params);
             symbolTable.addSymbol(functionSymbol);
+            funcDefNode.setFunctionSymbol(functionSymbol);
             currentFunction = functionSymbol;
         }
 

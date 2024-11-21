@@ -28,4 +28,12 @@ public class CharacterNode {
         // 不需要输出 <Character>，根据您的要求
         System.out.println("<Character>");
     }
+    /**
+     * Evaluate 方法返回字符常量的 ASCII 值。
+     * @return ASCII值，字符常量在ASCII表中对应的整数值。
+     */
+    public int evaluate() {
+        // 从字符常量中获取第一个字符，并返回其 ASCII 值
+        return charConst.charAt(1);
+    }
 }

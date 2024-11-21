@@ -77,4 +77,29 @@ public class UnaryExpNode {
         }
         System.out.println("<UnaryExp>");
     }
+    // 计算 UnaryExp 的值
+    public int evaluate() {
+        // 如果是基本表达式
+        if (primaryExpNode != null) {
+            return primaryExpNode.evaluate();
+        }
+        // 如果是函数调用（暂不支持函数调用的值计算，返回默认值0）
+        else if (ident != null) {
+            return 0; // 这里可以根据上下文支持函数返回值计算
+        }
+        // 如果是 UnaryOp UnaryExp
+        else if (unaryOpNode != null && unaryExpNode != null) {
+            int operand = unaryExpNode.evaluate();
+            String op = unaryOpNode.getToken().getValue(); // 获取操作符
+
+            if (op.equals("+")) {
+                return operand; // 一元加号，不改变值
+            } else if (op.equals("-")) {
+                return -operand; // 一元减号，取负值
+            } else if (op.equals("!")) {
+                return operand == 0 ? 1 : 0; // 逻辑非，0 -> 1，非0 -> 0
+            }
+        }
+        return 0; // 默认返回值
+    }
 }

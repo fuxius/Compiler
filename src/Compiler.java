@@ -1,3 +1,4 @@
+import LLVMIR.IRBuilder;
 import ast.CompUnitNode;
 import frontEnd.Lexer;
 import frontEnd.Parser;
@@ -26,6 +27,10 @@ public class Compiler {
             semanticAnalyzer.analyze(compUnitNode);
             // 输出错误信息到 error.txt
             ErrorHandler.getInstance().outputErrors();
+            // 构建并生成main函数
+            IRBuilder irBuilder = IRBuilder.getInstance();
+            irBuilder.analyze(compUnitNode);
+            irBuilder.outputLLVMIRToFile();
 
 
         } catch (Exception e) {

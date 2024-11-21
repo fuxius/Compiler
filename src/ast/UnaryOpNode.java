@@ -15,6 +15,18 @@ public class UnaryOpNode {
         this.op = token.getValue();
     }
 
+    public void setOp(String op) {
+        this.op = op;
+    }
+
+    public Token getToken() {
+        return token;
+    }
+
+    public void setToken(Token token) {
+        this.token = token;
+    }
+
     public String getOp() {
         return op;
     }

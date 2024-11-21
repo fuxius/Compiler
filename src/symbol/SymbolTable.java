@@ -3,18 +3,27 @@ package symbol;
 import java.util.*;
 
 public class SymbolTable {
+    private static final SymbolTable instance = new SymbolTable();
 
-    private Scope currentScope;
-    private int scopeCounter = 1; // 从1开始，表示全局作用域
-
-    // 记录每个作用域的符号列表，按作用域序号索引
-    private Map<Integer, List<Symbol>> symbolsInScope = new HashMap<>();
-
-    public SymbolTable() {
+    // 私有化构造器，防止外部实例化
+    private SymbolTable() {
         // 初始化全局作用域
         currentScope = new Scope(null, scopeCounter);
         symbolsInScope.put(scopeCounter, new ArrayList<>());
     }
+
+    // 提供全局访问点
+    public static SymbolTable getInstance() {
+        return instance;
+    }
+    private Scope currentScope;
+    private int scopeCounter = 1; // 从1开始，表示全局作用域
+    private int scopeCounterForLLVM = 1; // 从1开始，表示全局作用域
+
+    // 记录每个作用域的符号列表，按作用域序号索引
+    private Map<Integer, List<Symbol>> symbolsInScope = new HashMap<>();
+
+
 
     /**
      * 进入新作用域
@@ -24,6 +33,31 @@ public class SymbolTable {
         currentScope = new Scope(currentScope, scopeCounter);
         symbolsInScope.put(scopeCounter, new ArrayList<>());
     }
+    /**
+     * 进入已建立的子作用域
+     */
+    public void enterScopeForLLVM() {
+        scopeCounterForLLVM ++;
+        Scope targetScope = currentScope.getChildScopeByLevel(scopeCounterForLLVM);
+        if (targetScope != null) {
+            currentScope = targetScope;
+        } else {
+            throw new IllegalArgumentException("Target scope " + scopeCounterForLLVM + " does not exist or is not a child of the current scope.");
+        }
+    }
+
+    /**
+     * LLVM退出当前作用域
+     */
+    public void exitScopeForLLVM() {
+        if (currentScope.getParentScope() != null) {
+            currentScope = currentScope.getParentScope();
+        } else {
+            // 已经在全局作用域，无法再退出
+            System.err.println("Cannot exit the global scope.");
+        }
+    }
+
 
     /**
      * 退出当前作用域
@@ -108,10 +142,14 @@ public class SymbolTable {
         private Map<String, Symbol> symbols = new LinkedHashMap<>();
         private Scope parentScope;
         private int scopeLevel;
+        private List<Scope> childScopes = new ArrayList<>(); // 新增子作用域列表
 
         public Scope(Scope parentScope, int scopeLevel) {
             this.parentScope = parentScope;
             this.scopeLevel = scopeLevel;
+            if (parentScope != null) {
+                parentScope.addChildScope(this); // 将当前作用域添加到父作用域的子列表
+            }
         }
 
         public Map<String, Symbol> getSymbols() {
@@ -125,5 +163,23 @@ public class SymbolTable {
         public int getScopeLevel() {
             return scopeLevel;
         }
+
+        public List<Scope> getChildScopes() {
+            return childScopes;
+        }
+
+        public void addChildScope(Scope childScope) {
+            this.childScopes.add(childScope);
+        }
+
+        public Scope getChildScopeByLevel(int scopeLevel) {
+            for (Scope child : childScopes) {
+                if (child.getScopeLevel() == scopeLevel) {
+                    return child;
+                }
+            }
+            return null; // 如果未找到子作用域，返回 null
+        }
     }
+
 }

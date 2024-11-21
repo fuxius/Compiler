@@ -844,7 +844,7 @@ public class Parser {
                         match(TokenType.SEMICN); // 匹配 ';'
                     }
                     outputGrammar("<Stmt>");
-                    return new StmtNode(lValNode, getFuncToken.getType().toString());
+                    return new StmtNode(lValNode, getFuncToken.getValue());
                 } else {
                     // LVal '=' Exp ';'
                     ExpNode expNode = parseExp();

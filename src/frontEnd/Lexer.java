@@ -56,7 +56,6 @@ public class Lexer {
                 position++;
             }
         }
-
         saveResults(); // 保存Token和错误到文件
     }
 

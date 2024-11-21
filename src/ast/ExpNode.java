@@ -14,7 +14,9 @@ public class ExpNode {
     public AddExpNode getAddExpNode() {
         return addExpNode;
     }
-
+    public int evaluate(){
+        return addExpNode.evaluate();
+    }
     public void print() {
         addExpNode.print();
         System.out.println("<Exp>");

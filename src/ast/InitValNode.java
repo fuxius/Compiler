@@ -2,6 +2,7 @@ package ast;
 
 import token.Token;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -49,6 +50,32 @@ public class InitValNode {
         return stringConst;
     }
 
+    public boolean isZero(){
+        return expNode == null && expNodeList.size() == 0;
+    }
+    // 评估初始值
+    public ArrayList<Integer> evaluate() {
+        ArrayList<Integer> values = new ArrayList<>();
+
+        // 如果是单个表达式
+        if (expNode != null) {
+            values.add(expNode.evaluate()); // 调用 ExpNode 的 evaluate 方法
+        }
+        // 如果是表达式列表
+        else if (expNodeList != null) {
+            for (ExpNode exp : expNodeList) {
+                values.add(exp.evaluate()); // 对每个表达式求值
+            }
+        }
+        // 如果是字符串常量
+        else if (stringConst != null) {
+            for (char c : stringConst.toCharArray()) {
+                values.add((int) c); // 将字符串拆分为字符 ASCII 值
+            }
+        }
+
+        return values;
+    }
     public void print() {
         if (expNode != null) {
             expNode.print();

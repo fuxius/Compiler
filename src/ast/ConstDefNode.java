@@ -1,5 +1,6 @@
 package ast;
 
+import symbol.VariableSymbol;
 import token.Token;
 
 import java.util.List;
@@ -13,6 +14,15 @@ public class ConstDefNode {
     private Token token;
     private ConstExpNode constExpNode; // 数组维度列表
     private ConstInitValNode constInitValNode; // 常量初值
+    private VariableSymbol variableSymbol; //符号表项
+
+    public VariableSymbol getVariableSymbol() {
+        return variableSymbol;
+    }
+
+    public void setVariableSymbol(VariableSymbol variableSymbol) {
+        this.variableSymbol = variableSymbol;
+    }
 
     public Token getToken() {
         return token;
