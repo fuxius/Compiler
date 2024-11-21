@@ -1,51 +1,58 @@
 package LLVMIR.LLVMType;
 
+/**
+ * 表示 LLVM IR 中的通用类型基类
+ */
 public class LLVMType {
-    public static BasicBlockType basicBlockType = new BasicBlockType();
-    public static FuncType funcType = new FuncType();
-    public static BType Void = new BType(0);
-    public static BType Int1 = new BType(1);
-    public static BType Int8 = new BType(8);
-    public static BType Int32 = new BType(32);
+    public static final BasicBlockType basicBlockType = new BasicBlockType();
+    public static final FuncType funcType = new FuncType();
+    public static final BType Void = new BType(0);
+    public static final BType Int1 = new BType(1);
+    public static final BType Int8 = new BType(8);
+    public static final BType Int32 = new BType(32);
 
     public boolean isArray() {
         return this instanceof ArrayType;
     }
 
     public boolean isInt1() {
-        return this == BType.Int1;
+        return this == Int1;
     }
+
     public boolean isInt8() {
-        return this == BType.Int8;
+        return this == Int8;
     }
+
     public boolean isInt32() {
-        return this == BType.Int32;
+        return this == Int32;
     }
 
     public boolean isVoid() {
-        return this == BType.Void;
+        return this == Void;
     }
 
     public boolean isPointer() {
         return this instanceof PointerType;
     }
 
-
-    public boolean isFUNCTION() {
-        return this  instanceof FuncType;
+    public boolean isFuncType() {
+        return this instanceof FuncType;
     }
+
+    /**
+     * 比较当前类型与目标类型的大小关系
+     *
+     * @param otherType 目标类型
+     * @return 当前类型是否大于目标类型
+     */
     public boolean isBiggerThan(LLVMType otherType) {
-        if (this.equals(otherType) || this == LLVMType.Void) {
-            return false; // 相等的类型，不需要转换
+        if (this == Int32 && otherType == Int8) {
+            return true; // Int32 比 Int8 大
         }
-        if (this == LLVMType.Int32 && otherType == LLVMType.Int8) {
-            return true; // Int32 比 Int8 大，需要截断
+        if (this == Int8 && otherType == Int32) {
+            return false; // Int8 比 Int32 小
         }
-        if (this == LLVMType.Int8 && otherType == LLVMType.Int32) {
-            return false; // Int8 比 Int32 小，需要扩展
-        }
-        throw new IllegalArgumentException("Type comparison not supported for: " + this + " and " + otherType);
+        throw new IllegalArgumentException(
+                String.format("Type comparison not supported between %s and %s", this, otherType));
     }
-
-
 }

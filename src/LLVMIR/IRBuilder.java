@@ -1,5 +1,7 @@
 package LLVMIR;
 
+import LLVMIR.Base.*;
+import LLVMIR.Base.Module;
 import LLVMIR.Global.ConstStr;
 import LLVMIR.Global.GlobalVar;
 import LLVMIR.Ins.*;
@@ -7,7 +9,6 @@ import LLVMIR.LLVMType.LLVMType;
 import LLVMIR.LLVMType.PointerType;
 import ast.*;
 import symbol.FunctionSymbol;
-import symbol.Symbol;
 import symbol.SymbolTable;
 import symbol.VariableSymbol;
 import token.Token;
@@ -167,7 +168,6 @@ public class IRBuilder {
         // 获取常量符号信息（在语义分析阶段已设置好符号信息）
         VariableSymbol constSymbol = constDefNode.getVariableSymbol();
 
-        // 判断是否为全局常量
         if (symbolTable.getCurrentScopeLevel() == 1) {
             // 全局常量
             GlobalVar globalVar = new GlobalVar(
@@ -175,14 +175,21 @@ public class IRBuilder {
                     new PointerType(constSymbol.getLLVMType()), // 指针类型
                     constSymbol.getInitialValues(),             // 初始值
                     false,                                      // 非零初始化
-                    constSymbol.getDimension(),    // 数组长度
+                    constSymbol.getDimension(),                 // 数组长度
                     true                                        // 标记为常量
             );
             module.addGlobalVar(globalVar); // 添加到模块
             constSymbol.setLLVMIR(globalVar); // 关联 LLVM 对象
         } else {
             // 局部常量
-            Alloca allocaInstr = new Alloca(tempName + getVarId(), curBlock, constSymbol.getLLVMType());//这里可能有问题
+            Alloca allocaInstr;
+            if (constSymbol.getDimension() == 0) {
+                // 非数组常量
+                allocaInstr = new Alloca(tempName + getVarId(), curBlock, constSymbol.getLLVMType());
+            } else {
+                // 数组常量
+                allocaInstr = new Alloca(tempName + getVarId(), curBlock, constSymbol.getLLVMType(), constSymbol.getInitialValues());
+            }
             curBlock.addInstr(allocaInstr); // 分配内存
 
             // 初始化常量值
@@ -192,26 +199,48 @@ public class IRBuilder {
         }
     }
 
+
     /**
      * 初始化常量值
+     * @param constSymbol 常量符号
+     * @param allocaInstr 分配的内存指令
      */
     private void initializeConstant(VariableSymbol constSymbol, Alloca allocaInstr) {
         if (constSymbol.getDimension() == 0) {
             // 非数组常量
-            int value = constSymbol.getInitialValues().get(0);
-            Store storeInstr = new Store(new Constant(value), allocaInstr, curBlock);
-            curBlock.addInstr(storeInstr);
+            initializeScalarConstant(constSymbol, allocaInstr);
         } else {
             // 数组常量
-            // 遍历初始值，逐一存储到数组中
-            for (int i = 0; i < constSymbol.getInitialValues().size(); i++) {
-                Value index = new Constant(i);
-                GetPtr getPtrInstr = new GetPtr(tempName + getVarId(), allocaInstr, index, curBlock);
-                curBlock.addInstr(getPtrInstr);
-                int value = constSymbol.getInitialValues().get(i);
-                Store storeInstr = new Store(new Constant(value), getPtrInstr, curBlock);
-                curBlock.addInstr(storeInstr);
-            }
+            initializeArrayConstant(constSymbol, allocaInstr);
+        }
+    }
+
+    /**
+     * 初始化标量常量值
+     * @param constSymbol 常量符号
+     * @param allocaInstr 分配的内存指令
+     */
+    private void initializeScalarConstant(VariableSymbol constSymbol, Alloca allocaInstr) {
+        int value = constSymbol.getInitialValues().get(0);
+        Store storeInstr = new Store(new Constant(value), allocaInstr, curBlock);
+        curBlock.addInstr(storeInstr);
+    }
+
+    /**
+     * 初始化数组常量值
+     * @param constSymbol 常量符号
+     * @param allocaInstr 分配的内存指令
+     */
+    private void initializeArrayConstant(VariableSymbol constSymbol, Alloca allocaInstr) {
+        ArrayList<Integer> initialValues = constSymbol.getInitialValues();
+        for (int i = 0; i < initialValues.size(); i++) {
+            Value index = new Constant(i);
+            GetPtr getPtrInstr = new GetPtr(tempName + getVarId(), allocaInstr, index, curBlock);
+            curBlock.addInstr(getPtrInstr);
+
+            int value = initialValues.get(i);
+            Store storeInstr = new Store(new Constant(value), getPtrInstr, curBlock);
+            curBlock.addInstr(storeInstr);
         }
     }
 
@@ -681,6 +710,7 @@ public class IRBuilder {
                 break;
         }
     }
+
     public Value buildLValForAssign(LValNode lValNode) {
         // 获取左值标识符（变量名）
         String name = lValNode.getToken().getValue();

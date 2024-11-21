@@ -1,14 +1,9 @@
 package symbol;
 
-import LLVMIR.Global.GlobalVar;
-import LLVMIR.LLVMType.ArrayType;
 import LLVMIR.LLVMType.LLVMType;
-import LLVMIR.Value;
-import symbol.Symbol;
+import LLVMIR.Base.Value;
 
 import java.util.ArrayList;
-
-import static LLVMIR.LLVMType.LLVMType.*;
 
 public class VariableSymbol extends Symbol {
     private String baseType; // 基本类型："int" 或 "char"

@@ -1,26 +1,58 @@
 package LLVMIR.Ins;
 
-import LLVMIR.BasicBlock;
-import LLVMIR.Instruction;
+import LLVMIR.Base.BasicBlock;
+import LLVMIR.Base.Instruction;
 import LLVMIR.LLVMType.LLVMType;
 import LLVMIR.LLVMType.PointerType;
-import LLVMIR.Value;
+import LLVMIR.Base.Value;
 
+/**
+ * 表示 LLVM IR 中的加载指令 (load)
+ */
 public class Load extends Instruction {
-    public Load(String name, Value point, BasicBlock parent) {
-        super(name, getTypeFromPointer(point), InstrType.LOAD, parent);
-        addOperand(point);
-    }
 
-    // 根据指针类型获取加载结果的类型
-    private static LLVMType getTypeFromPointer(Value point) {
-        if (point.getType() instanceof PointerType) {
-            return ((PointerType) point.getType()).getPointedType();
+    /**
+     * 构造加载指令
+     *
+     * @param name   指令名称（加载结果的标识符）
+     * @param pointer 指针操作数
+     * @param parent 当前指令所属基本块
+     */
+    public Load(String name, Value pointer, BasicBlock parent) {
+        super(name, getTypeFromPointer(pointer), InstrType.LOAD, parent);
+
+        if (pointer == null) {
+            throw new IllegalArgumentException("Pointer operand cannot be null");
         }
-        throw new IllegalArgumentException("Load expects a pointer type, but got: " + point.getType());
+
+        addOperand(pointer);
     }
 
+    /**
+     * 根据指针操作数获取加载结果的类型
+     *
+     * @param pointer 指针操作数
+     * @return 加载结果的类型
+     */
+    private static LLVMType getTypeFromPointer(Value pointer) {
+        if (!(pointer.getType() instanceof PointerType)) {
+            throw new IllegalArgumentException(
+                    "Load instruction expects a pointer type, but got: " + pointer.getType());
+        }
+        return ((PointerType) pointer.getType()).getPointedType();
+    }
+
+    /**
+     * 返回 LLVM IR 格式的加载指令字符串
+     *
+     * @return 格式化的指令字符串
+     */
+    @Override
     public String toString() {
-        return Name + " = load " + type + ", " + operands.get(0).getType() + " " + operands.get(0).getName();
+        return String.format("%s = load %s, %s %s",
+                Name,
+                type,
+                operands.get(0).getType(),
+                operands.get(0).getName());
     }
 }

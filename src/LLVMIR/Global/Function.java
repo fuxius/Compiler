@@ -1,21 +1,38 @@
 package LLVMIR.Global;
 
-import LLVMIR.BasicBlock;
-import LLVMIR.LLVMType.FuncType;
+import LLVMIR.Base.BasicBlock;
 import LLVMIR.LLVMType.LLVMType;
-import LLVMIR.Param;
-import LLVMIR.User;
+import LLVMIR.Base.Param;
+import LLVMIR.Base.User;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
+/**
+ * 表示LLVM中的函数
+ */
 public class Function extends User {
-    private LLVMType returnType; // 函数的返回类型
-    private List<Param> params;  // 函数的参数列表
-    private List<BasicBlock> basicBlocks;  // 函数包含的基本块
-    private int varId;//变量id
-    private int blockId;//块id
+    private final LLVMType returnType;       // 函数的返回类型
+    private final List<Param> params;       // 函数的参数列表
+    private final List<BasicBlock> basicBlocks; // 函数包含的基本块
+    private int varId;                      // 变量ID计数
+    private int blockId;                    // 基本块ID计数
 
+    /**
+     * 构造函数
+     *
+     * @param name       函数名
+     * @param returnType 返回类型
+     */
+    public Function(String name, LLVMType returnType) {
+        super(name, LLVMType.funcType); // 使用函数类型
+        this.returnType = Objects.requireNonNull(returnType, "Return type cannot be null");
+        this.params = new ArrayList<>();
+        this.basicBlocks = new ArrayList<>();
+    }
+
+    // 变量ID管理
     public int getVarId() {
         return varId;
     }
@@ -24,6 +41,7 @@ public class Function extends User {
         this.varId = varId;
     }
 
+    // 基本块ID管理
     public int getBlockId() {
         return blockId;
     }
@@ -32,53 +50,87 @@ public class Function extends User {
         this.blockId = blockId;
     }
 
-    public Function(String name, LLVMType returnType) {
-        super(name, LLVMType.funcType); // 函数类型
-        this.returnType = returnType;
-        this.params = new ArrayList<>();
-        this.basicBlocks = new ArrayList<>();
-    }
-
+    /**
+     * 添加参数到参数列表
+     *
+     * @param param 参数对象
+     */
     public void addParam(Param param) {
-        params.add(param);
+        Objects.requireNonNull(param, "Param cannot be null");
+        if (!params.contains(param)) { // 避免重复添加
+            params.add(param);
+        }
     }
 
+    /**
+     * 获取参数列表
+     *
+     * @return 参数列表
+     */
     public List<Param> getParams() {
-        return params;
+        return new ArrayList<>(params); // 返回副本，防止直接修改
     }
 
+    /**
+     * 添加基本块到函数
+     *
+     * @param block 基本块对象
+     */
     public void addBasicBlock(BasicBlock block) {
-        basicBlocks.add(block);
+        Objects.requireNonNull(block, "BasicBlock cannot be null");
+        if (!basicBlocks.contains(block)) { // 避免重复添加
+            basicBlocks.add(block);
+        }
     }
 
+    /**
+     * 获取基本块列表
+     *
+     * @return 基本块列表
+     */
     public List<BasicBlock> getBasicBlocks() {
-        return basicBlocks;
+        return new ArrayList<>(basicBlocks); // 返回副本，防止直接修改
     }
 
+    /**
+     * 获取函数返回类型
+     *
+     * @return 返回类型
+     */
     public LLVMType getReturnType() {
         return returnType;
     }
+
+    /**
+     * 返回LLVM IR格式字符串
+     *
+     * @return 格式化的函数定义
+     */
+    @Override
     public String toString() {
         StringBuilder ret = new StringBuilder("define dso_local ");
-        if (returnType.isVoid()) {
-            ret.append("void ");
-        } else {
-            ret.append("i32 ");
-        }
+
+        // 动态获取返回类型
+        ret.append(returnType.isVoid() ? "void " : "i32 ");
+
         ret.append(Name).append("(");
-        for (Param param : params) {
-            if (params.indexOf(param) == 0) {
-                ret.append(param);
-            } else {
-                ret.append(",").append(param);
+
+        // 构建参数列表
+        for (int i = 0; i < params.size(); i++) {
+            ret.append(params.get(i));
+            if (i < params.size() - 1) {
+                ret.append(", ");
             }
         }
-        ret.append("){\n");
+
+        ret.append(") {\n");
+
+        // 构建基本块列表
         for (BasicBlock block : basicBlocks) {
-            ret.append(block);
+            ret.append(block).append("\n");
         }
-        ret.append("\n}");
+
+        ret.append("}");
         return ret.toString();
     }
 }
-
