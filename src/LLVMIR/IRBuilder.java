@@ -308,7 +308,7 @@ public class IRBuilder {
                     Store storeInstr = new Store(values.get(0), getPtrInstr, curBlock);
                     curBlock.addInstr(storeInstr);
                     varSymbol.setLLVMIR(getPtrInstr);
-                    for (int i = 0; i < values.size(); i++) {
+                    for (int i = 1; i < values.size(); i++) {
                         // 获取数组元素的指针
                         getPtrInstr = new GetPtr(tempName + getVarId(), allocaInstr, new Constant(i), curBlock);
                         curBlock.addInstr(getPtrInstr);
@@ -731,21 +731,9 @@ public class IRBuilder {
         if (symbol.getDimension() == 0) {
             // 标量：直接返回符号的 LLVM IR
             return symbol.getLLVMIR();
-        } else if (symbol.getDimension() == 1) {
+        } else {
             // 一维数组：使用 GetPtr 计算地址
             GetPtr getPtrInstr = new GetPtr(tempName + getVarId(), symbol.getLLVMIR(), values.get(0), curBlock);
-            curBlock.addInstr(getPtrInstr);
-            return getPtrInstr;
-        } else {
-            // 多维数组：使用 Alu 指令计算偏移地址
-            Alu aluInstr = new Alu(tempName + getVarId(), new Constant(symbol.getInitialValues().get(1)), values.get(0), Alu.OP.MUL, curBlock);
-            curBlock.addInstr(aluInstr);
-
-            aluInstr = new Alu(tempName + getVarId(), aluInstr, values.get(1), Alu.OP.ADD, curBlock);
-            curBlock.addInstr(aluInstr);
-
-            // 获取计算后的地址
-            GetPtr getPtrInstr = new GetPtr(tempName + getVarId(), symbol.getLLVMIR(), aluInstr, curBlock);
             curBlock.addInstr(getPtrInstr);
             return getPtrInstr;
         }
