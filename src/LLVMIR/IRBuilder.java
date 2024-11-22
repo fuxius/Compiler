@@ -165,6 +165,7 @@ public class IRBuilder {
      * ConstDef → Ident { '[' ConstExp ']' } '=' ConstInitVal
      */
     private void buildConstDef(ConstDefNode constDefNode, Token token) {
+        constDefNode.initializeVariableSymbolForLLVM();
         // 获取常量符号信息（在语义分析阶段已设置好符号信息）
         VariableSymbol constSymbol = constDefNode.getVariableSymbol();
 
@@ -358,7 +359,6 @@ public class IRBuilder {
     private void buildFuncDef(FuncDefNode funcDefNode) {
         // 获取函数符号并设置符号表
         FunctionSymbol functionSymbol = funcDefNode.getFunctionSymbol();
-        String funcName = functionSymbol.getName();
         String returnType = functionSymbol.getReturnType();
 
         // 确定返回类型
@@ -370,7 +370,7 @@ public class IRBuilder {
         };
 
         // 创建函数对象
-        curFunc = new Function(funcName, retType);
+        curFunc = new Function(funcName+getFuncId(), retType);
         module.addFunction(curFunc); // 添加到模块
         functionSymbol.setLLVMIR(curFunc); // 关联符号表
 
@@ -382,7 +382,7 @@ public class IRBuilder {
         symbolTable.enterScopeForLLVM();
         paramId = 0; // 参数编号从 0 开始
         varId = 0;
-        paramId = 0;
+        blockId = 0;
         if (funcDefNode.getFuncFParamsNode() != null) {
             buildFuncFParams(funcDefNode.getFuncFParamsNode());
         }
@@ -458,8 +458,12 @@ public class IRBuilder {
         // 确定形参的 LLVM 类型
         LLVMType llvmType;
         if (varSymbol.getDimension() == 0) {
-            // 标量：普通变量类型
-            llvmType = varSymbol.getBaseType().equals("int") ? LLVMType.Int32 : LLVMType.Int8;
+            if(varSymbol.isConst()){
+                llvmType = funcFParamNode.getToken().getType() == TokenType.INTTK? LLVMType.Int32 : LLVMType.Int8;
+            }else {
+                // 标量：普通变量类型
+                llvmType = varSymbol.getBaseType().equals("int") ? LLVMType.Int32 : LLVMType.Int8;
+            }
         } else if (varSymbol.getDimension() == 1) {
             // 一维数组变量：指针类型
             llvmType = new PointerType(varSymbol.getBaseType().equals("int") ? LLVMType.Int32 : LLVMType.Int8);
@@ -850,24 +854,30 @@ public class IRBuilder {
             // 直接构建基本表达式并返回结果
             return buildPrimaryExp(unaryExpNode.getPrimaryExpNode());
         }
-        // 如果是函数调用
         else if (unaryExpNode.getIdent() != null) {
-            // 获取函数名
+            // 函数调用
             String functionName = unaryExpNode.getIdent();
-            // 准备函数参数列表
-            ArrayList<Value> parameters = new ArrayList<>();
-            // 如果有函数参数，则构建函数参数
-            if (unaryExpNode.getFuncRParamsNode() != null) {
-                parameters = buildFuncRParams(unaryExpNode.getFuncRParamsNode());
-            }
-            // 从符号表中获取函数定义
-            Function function = ((FunctionSymbol) symbolTable.lookup(functionName)).getLLVMIR();
-            // 创建函数调用指令
-            Call callInstr = new Call(function, function.getReturnType() == LLVMType.Int32 ? tempName + getVarId() : null, parameters, curBlock);
-            curBlock.addInstr(callInstr);
-            // 使用统一的类型转换方法
-            return convertType(callInstr, LLVMType.Int32);
 
+            // 获取函数定义
+            Function function = ((FunctionSymbol) symbolTable.lookup(functionName)).getLLVMIR();
+
+            // 获取形参类型列表
+            List<LLVMType> paramTypes = function.getParams().stream()
+                    .map(Param::getType)
+                    .toList();
+
+            // 构建实参
+            ArrayList<Value> parameters = new ArrayList<>();
+            if (unaryExpNode.getFuncRParamsNode() != null) {
+                parameters = buildFuncRParams(unaryExpNode.getFuncRParamsNode(), paramTypes);
+            }
+
+            // 创建函数调用指令
+            Call callInstr = new Call(function, tempName + getVarId(), parameters, curBlock);
+            curBlock.addInstr(callInstr);
+
+            // 转换返回值类型（如有必要）
+            return convertType(callInstr, LLVMType.Int32);
         }
         // 如果是一元运算符
         else if (unaryExpNode.getUnaryExpNode() != null) {
@@ -964,18 +974,31 @@ public class IRBuilder {
 
 
     /**
-     * 遍历函数实参列表
+     * 遍历函数实参列表并完成类型转换
      * FuncRParams → Exp { ',' Exp }
      *
-     * @return
+     * @param funcRParamsNode 函数实参节点
+     * @param expectedTypes 函数形参的类型列表
+     * @return 转换后的实参列表
      */
-    private ArrayList<Value> buildFuncRParams(FuncRParamsNode funcRParamsNode) {
+    private ArrayList<Value> buildFuncRParams(FuncRParamsNode funcRParamsNode, List<LLVMType> expectedTypes) {
         ArrayList<Value> values = new ArrayList<>();
-        for (ExpNode expNode : funcRParamsNode.getExpNodes()) {
-            values.add(buildExp(expNode));
+        List<ExpNode> expNodes = funcRParamsNode.getExpNodes();
+
+        for (int i = 0; i < expNodes.size(); i++) {
+            // 生成实参
+            Value argument = buildExp(expNodes.get(i));
+
+            // 确保类型一致
+            LLVMType expectedType = expectedTypes.get(i);
+            Value convertedArgument = convertType(argument, expectedType);
+
+            values.add(convertedArgument);
         }
+
         return values;
     }
+
 
     private Value convertType(Value value, LLVMType targetType) {
         if (value.getType().equals(targetType) || value.getType() == LLVMType.Void) {

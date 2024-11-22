@@ -111,8 +111,13 @@ public class Function extends User {
         StringBuilder ret = new StringBuilder("define dso_local ");
 
         // 动态获取返回类型
-        ret.append(returnType.isVoid() ? "void " : "i32 ");
-
+        if(returnType.isVoid()){
+            ret.append("void ");
+        }else if(returnType.isInt8()){
+            ret.append("i8 ");
+        }else if(returnType.isInt32()){
+            ret.append("i32 ");
+        }
         ret.append(Name).append("(");
 
         // 构建参数列表
