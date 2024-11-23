@@ -42,6 +42,11 @@ public class ConstInitValNode {
      *
      * @return 常量初值的值列表
      */
+    /**
+     * 计算常量初值的值
+     *
+     * @return 常量初值的值列表
+     */
     public ArrayList<Integer> evaluate() {
         ArrayList<Integer> result = new ArrayList<>();
 
@@ -55,15 +60,56 @@ public class ConstInitValNode {
             }
         } else if (stringConst != null) {
             // 字符串常量
-            for (char c : stringConst.toCharArray()) {
-                result.add((int) c);
-            }
-            // 添加字符串结束符 '\0'
-            result.add(0);
+            result.addAll(evaluateStringConst());
         }
 
         return result;
     }
+
+    /**
+     * 处理字符串常量，将其拆分为 ASCII 值，并处理转义字符。
+     *
+     * @return 字符串常量的 ASCII 值列表
+     */
+    private ArrayList<Integer> evaluateStringConst() {
+        ArrayList<Integer> values = new ArrayList<>();
+        String strippedString = stringConst;
+
+        // 去掉字符串两侧的引号
+        if (stringConst.length() > 1 && stringConst.charAt(0) == '\"' && stringConst.charAt(stringConst.length() - 1) == '\"') {
+            strippedString = stringConst.substring(1, stringConst.length() - 1);
+        }
+
+        // 遍历字符串并处理字符和转义字符
+        for (int i = 0; i < strippedString.length(); i++) {
+            char c = strippedString.charAt(i);
+            if (c == '\\' && i + 1 < strippedString.length()) { // 检测到转义字符
+                char nextChar = strippedString.charAt(++i);
+                switch (nextChar) {
+                    case 'a': c = '\u0007'; break; // 警报字符
+                    case 'b': c = '\b';    break; // 退格
+                    case 't': c = '\t';    break; // 水平制表符
+                    case 'n': c = '\n';    break; // 换行
+                    case 'v': c = '\u000B'; break; // 垂直制表符
+                    case 'f': c = '\f';    break; // 换页
+                    case 'r': c = '\r';    break; // 回车
+                    case '\\': c = '\\';   break; // 反斜杠
+                    case '\'': c = '\'';   break; // 单引号
+                    case '"': c = '\"';    break; // 双引号
+                    case '0': c = '\0';    break; // 空字符
+                    default: throw new IllegalArgumentException("Unsupported escape sequence: \\" + nextChar);
+                }
+            }
+            values.add((int) c);
+        }
+
+        // 添加结束符 '\0'
+        values.add(0);
+
+        return values;
+    }
+
+
 
     /**
      * 判断常量是否为零初始化
@@ -86,9 +132,19 @@ public class ConstInitValNode {
     public List<ConstExpNode> getConstExpNodeList() {
         return constExpNodeList;
     }
-
+    //判断是否为字符串常量
+    public boolean isStringConst() {
+        return stringConst != null;
+    }
     public String getStringConst() {
-        return stringConst;
+        if(stringConst == null)     return null;
+        String strippedString = stringConst;
+
+        // 去掉字符串两侧的引号
+        if (stringConst.length() > 1 && stringConst.charAt(0) == '\"' && stringConst.charAt(stringConst.length() - 1) == '\"') {
+            strippedString = stringConst.substring(1, stringConst.length() - 1);
+        }
+        return strippedString;
     }
 
     public void print() {

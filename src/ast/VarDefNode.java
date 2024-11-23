@@ -53,33 +53,37 @@ public class VarDefNode {
     }
 
     public void initializeVariableSymbolForLLVM() {
+        // 如果是数组，则计算长度
+        int length = constExpNode != null ? constExpNode.evaluate() : 0;
+        variableSymbol.setLength(length);
 
-        // 处理 LLVM 类型
-        LLVMType llvmType = determineLLVMType(variableSymbol.getBaseType(), variableSymbol.getDimension());
+        // 构造数组的 LLVM 类型
+        LLVMType llvmType = determineLLVMType(variableSymbol.getBaseType(), length);
         variableSymbol.setLLVMType(llvmType);
 
+        // 初始化标记
         variableSymbol.setZeroInitialized(false);
-        if(variableSymbol.isGlobal()){
-            //全局变量
-            // 处理初始值（如果有）
+
+        if (variableSymbol.isGlobal()) {
+            // 全局变量
             if (initValNode != null) {
                 variableSymbol.setInitialValues(initValNode.evaluate());
                 variableSymbol.setZeroInitialized(initValNode.isZero());
-            } else  {
+            } else {
                 variableSymbol.setZeroInitialized(true);
             }
         }
-
     }
 
-    private LLVMType determineLLVMType(String baseType, int dimension) {
-        if (dimension == 0) {
+    private LLVMType determineLLVMType(String baseType, int length) {
+        if (length == 0) {
             return baseType.equals("int") ? LLVMType.Int32 : LLVMType.Int8;
         } else {
             LLVMType elementType = baseType.equals("int") ? LLVMType.Int32 : LLVMType.Int8;
-            return new ArrayType(elementType, dimension);
+            return new ArrayType(elementType, length);
         }
     }
+
     public void print() {
         System.out.println("IDENFR " + ident);
         if (constExpNode != null) {

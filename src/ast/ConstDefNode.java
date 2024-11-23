@@ -49,12 +49,12 @@ public class ConstDefNode {
         return constInitValNode;
     }
     public void initializeVariableSymbolForLLVM() {
-        // 确定基本类型和维度
+        // 确定基本类型和数组长度
         String baseType = variableSymbol.getBaseType();
-        int dimension = constExpNode != null ? constExpNode.evaluate() : 0;
+        int length = constExpNode != null ? constExpNode.evaluate() : 0;
 
         // 计算 LLVM 类型
-        LLVMType llvmType = determineLLVMType(baseType, dimension);
+        LLVMType llvmType = determineLLVMType(baseType, length);
         variableSymbol.setLLVMType(llvmType);
 
         // 初始化值处理
@@ -78,14 +78,17 @@ public class ConstDefNode {
     }
 
     // 辅助方法：确定 LLVM 类型
-    private LLVMType determineLLVMType(String baseType, int dimension) {
-        if (dimension == 0) {
+    private LLVMType determineLLVMType(String baseType, int length) {
+        if (constInitValNode.isStringConst()) {
+            // 字符串常量
+            return new ArrayType(LLVMType.Int8, constInitValNode.evaluate().size() + 1);
+        } else if (length == 0) {
             // 标量类型
             return baseType.equals("int") ? LLVMType.Int32 : LLVMType.Int8;
         } else {
             // 数组类型
             LLVMType elementType = baseType.equals("int") ? LLVMType.Int32 : LLVMType.Int8;
-            return new ArrayType(elementType, dimension);
+            return new ArrayType(elementType, length);
         }
     }
 

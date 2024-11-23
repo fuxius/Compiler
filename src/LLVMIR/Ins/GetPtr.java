@@ -52,11 +52,11 @@ public class GetPtr extends Instruction {
 
         if (pointedType.isInt32()) {
             // 简化形式：处理基本类型的偏移
-            return String.format("%s = getelementptr inbounds i32, i32* %s, i32 %s",
+            return String.format("%s = getelementptr i32, i32* %s, i32 %s",
                     Name, pointer.getName(), offset.getName());
         } else {
             // 完整形式：处理数组的偏移
-            return String.format("%s = getelementptr inbounds %s, %s %s, i32 0, i32 %s",
+            return String.format("%s = getelementptr %s, %s %s, i32 0, i32 %s",
                     Name, pointedType, pointerType, pointer.getName(), offset.getName());
         }
     }

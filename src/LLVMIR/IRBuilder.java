@@ -5,6 +5,7 @@ import LLVMIR.Base.Module;
 import LLVMIR.Global.ConstStr;
 import LLVMIR.Global.GlobalVar;
 import LLVMIR.Ins.*;
+import LLVMIR.LLVMType.ArrayType;
 import LLVMIR.LLVMType.LLVMType;
 import LLVMIR.LLVMType.PointerType;
 import ast.*;
@@ -176,7 +177,7 @@ public class IRBuilder {
                     new PointerType(constSymbol.getLLVMType()), // 指针类型
                     constSymbol.getInitialValues(),             // 初始值
                     false,                                      // 非零初始化
-                    constSymbol.getDimension(),                 // 数组长度
+                    constSymbol.getLength(),                 // 数组长度
                     true                                        // 标记为常量
             );
             module.addGlobalVar(globalVar); // 添加到模块
@@ -234,16 +235,21 @@ public class IRBuilder {
      */
     private void initializeArrayConstant(VariableSymbol constSymbol, Alloca allocaInstr) {
         ArrayList<Integer> initialValues = constSymbol.getInitialValues();
-        for (int i = 0; i < initialValues.size(); i++) {
+        int length = constSymbol.getLength();
+
+        for (int i = 0; i < length; i++) {
+            // 获取数组元素的指针
             Value index = new Constant(i);
             GetPtr getPtrInstr = new GetPtr(tempName + getVarId(), allocaInstr, index, curBlock);
             curBlock.addInstr(getPtrInstr);
 
-            int value = initialValues.get(i);
+            // 获取初始值（如果不足，则补零）
+            int value = (i < initialValues.size()) ? initialValues.get(i) : 0;
             Store storeInstr = new Store(new Constant(value), getPtrInstr, curBlock);
             curBlock.addInstr(storeInstr);
         }
     }
+
 
 
     /**
@@ -274,7 +280,7 @@ public class IRBuilder {
                     new PointerType(varSymbol.getLLVMType()), // 指针类型
                     varSymbol.getInitialValues(),             // 初始值
                     varSymbol.isZeroInitialized(),            // 是否初始化为零
-                    varSymbol.getDimension(),                   // 维度
+                    varSymbol.getLength(),                   // 数组长度
                     varSymbol.isConst()                         // 非常量（变量）
             );
             module.addGlobalVar(globalVar); // 将全局变量添加到模块
@@ -296,30 +302,27 @@ public class IRBuilder {
                     Store storeInstr = new Store(convertedValue, allocaInstr, curBlock);
                     curBlock.addInstr(storeInstr); // 存储初始值
                 }
-            } else {
+            } else { // 一维数组
+                int length = varSymbol.getLength();
                 Alloca allocaInstr = new Alloca(tempName + getVarId(), curBlock, varSymbol.getLLVMType());
                 curBlock.addInstr(allocaInstr); // 分配内存空间
-                if(initValNode != null) {
-                    // 数组变量
+
+                if (length > 0 && initValNode != null) {
+                    // 初始化数组变量
                     ArrayList<Value> values = buildInitVal(initValNode);
-                    GetPtr getPtrInstr = new GetPtr(tempName + getVarId(), allocaInstr, new Constant(0), curBlock);
-                    curBlock.addInstr(getPtrInstr);
-                    // 存储初始值到对应位置
-                    Store storeInstr = new Store(values.get(0), getPtrInstr, curBlock);
-                    curBlock.addInstr(storeInstr);
-                    varSymbol.setLLVMIR(getPtrInstr);
-                    for (int i = 1; i < values.size(); i++) {
-                        // 获取数组元素的指针
-                        getPtrInstr = new GetPtr(tempName + getVarId(), allocaInstr, new Constant(i), curBlock);
+                    for (int i = 0; i < length; i++) {
+                        Value index = new Constant(i);
+                        GetPtr getPtrInstr = new GetPtr(tempName + getVarId(), allocaInstr, index, curBlock);
                         curBlock.addInstr(getPtrInstr);
-                        // 存储初始值到对应位置
-                        storeInstr = new Store(values.get(i), getPtrInstr, curBlock);
+
+                        Value value = (i < values.size()) ? values.get(i) : new Constant(0);
+                        Store storeInstr = new Store(value, getPtrInstr, curBlock);
                         curBlock.addInstr(storeInstr);
                     }
-                }else{
-                    varSymbol.setLLVMIR(allocaInstr); // 将 LLVM 对象关联到符号表项
                 }
+                varSymbol.setLLVMIR(allocaInstr); // 在初始化完成后关联
             }
+
 
         }
     }
@@ -494,6 +497,42 @@ public class IRBuilder {
     }
 
 
+    /**
+     * 遍历函数实参列表并完成类型转换
+     * FuncRParams → Exp { ',' Exp }
+     *
+     * @param funcRParamsNode 函数实参节点
+     * @param expectedTypes 函数形参的类型列表
+     * @return 转换后的实参列表
+     */
+    private ArrayList<Value> buildFuncRParams(FuncRParamsNode funcRParamsNode, List<LLVMType> expectedTypes) {
+        ArrayList<Value> values = new ArrayList<>();
+        List<ExpNode> expNodes = funcRParamsNode.getExpNodes();
+
+        for (int i = 0; i < expNodes.size(); i++) {
+            // 生成实参
+            Value argument = buildExp(expNodes.get(i));
+
+            // 检查是否为数组传参
+            if (argument.getType() instanceof PointerType) {
+                PointerType pointerType = (PointerType) argument.getType();
+                if (pointerType.getPointedType() instanceof ArrayType) {
+                    // 如果是数组类型，需要使用 GEP 获取首元素地址
+                    GetPtr getPtrInstr = new GetPtr(tempName + getVarId(), argument, new Constant(0), curBlock);
+                    curBlock.addInstr(getPtrInstr);
+                    argument = getPtrInstr; // 更新为指向数组首元素的普通指针
+                }
+            }
+
+            // 确保类型一致
+            LLVMType expectedType = expectedTypes.get(i);
+            Value convertedArgument = convertType(argument, expectedType);
+
+            values.add(convertedArgument);
+        }
+
+        return values;
+    }
     /**
      * 遍历代码块
      * Block → '{' { BlockItem } '}'
@@ -746,9 +785,11 @@ public class IRBuilder {
     private void buildForStmt(ForStmtNode forStmtNode) {
         if (forStmtNode.getlValNode() != null && forStmtNode.getExpNode() != null) {
             // 遍历赋值的左值
-            buildLValForAssign(forStmtNode.getlValNode());
+            Value lVal = buildLValForAssign(forStmtNode.getlValNode());
             // 遍历赋值的表达式
-            buildExp(forStmtNode.getExpNode());
+            Value exp = buildExp(forStmtNode.getExpNode());
+            Store storeInstr = new Store(exp, lVal, curBlock);
+            curBlock.addInstr(storeInstr);
         }
     }
 
@@ -938,6 +979,7 @@ public class IRBuilder {
 
 
 
+
     /**
      * 构建用于从变量或数组加载值的LLVM IR代码。
      * @param lValNode LVal节点，表示变量或数组访问。
@@ -945,53 +987,81 @@ public class IRBuilder {
      */
     private Value buildLValForValue(LValNode lValNode) {
         // 从符号表中查找变量或数组的符号信息
-        VariableSymbol symbol = (VariableSymbol)symbolTable.lookup(lValNode.getIdent());
+        VariableSymbol symbol = (VariableSymbol) symbolTable.lookup(lValNode.getIdent());
         Value baseValue = symbol.getLLVMIR();
 
-        // 如果是单一变量访问
-        {
+        if (symbol.getDimension() == 0) {
+            // 标量：直接加载值
             Load loadInstr = new Load(tempName + getVarId(), baseValue, curBlock);
             curBlock.addInstr(loadInstr);
 
             // 使用统一的类型转换方法
-            Value convertedValue = convertType(loadInstr, LLVMType.Int32);
-            return convertedValue;
+            return convertType(loadInstr, LLVMType.Int32);
+        } else if (symbol.getDimension() == 1) {
+            // 一维数组
+            if (lValNode.getExpNode() != null) {
+                // 数组元素访问：通过索引访问特定元素
+                Value index = buildExp(lValNode.getExpNode());
 
+                // 计算数组元素的指针
+                GetPtr getPtrInstr = new GetPtr(tempName + getVarId(), baseValue, index, curBlock);
+                curBlock.addInstr(getPtrInstr);
+
+                // 加载数组元素的值
+                Load loadInstr = new Load(tempName + getVarId(), getPtrInstr, curBlock);
+                curBlock.addInstr(loadInstr);
+
+                // 返回加载的值
+                return convertType(loadInstr, LLVMType.Int32);
+            } else {
+                // 数组传参：返回数组的首地址
+                return baseValue;
+            }
+        } else {
+            throw new UnsupportedOperationException("Only scalar and one-dimensional arrays are supported.");
         }
     }
+//    public Value buildRelExp(RelExpNode relExpNode) {
+//        // 构建操作数和运算符列表
+//        relExpNode.populateLists();
+//        List<AddExpNode> addExpNodes = relExpNode.getAddExpNodes();
+//        List<Token> operators = relExpNode.getOperators();
+//
+//        // 初始操作数
+//        Value operand1 = buildAddExp(addExpNodes.get(0));
+//
+//        // 遍历后续的 AddExp 和运算符
+//        for (int i = 0; i < operators.size(); i++) {
+//            Value operand2 = buildAddExp(addExpNodes.get(i + 1));
+//            Token operator = operators.get(i);
+//
+//            // 根据操作符生成比较指令
+//            Icmp.OP op = switch (operator.getType()) {
+//                case LSS -> Icmp.OP.SLT;
+//                case LEQ -> Icmp.OP.SLE;
+//                case GRE -> Icmp.OP.SGT;
+//                case GEQ -> Icmp.OP.SGE;
+//                default -> throw new IllegalStateException("Unexpected value: " + operator.getType());
+//            };
+//            Icmp icmpInstr = new Icmp(operand1, operand2, tempName + getVarId(), curBlock, op);
+//            curBlock.addInstr(icmpInstr);
+//
+//            // 更新操作数
+//            operand1 = icmpInstr;
+//        }
+//
+//        return operand1;
+//    }
 
-
-    /**
-     * 遍历函数实参列表并完成类型转换
-     * FuncRParams → Exp { ',' Exp }
-     *
-     * @param funcRParamsNode 函数实参节点
-     * @param expectedTypes 函数形参的类型列表
-     * @return 转换后的实参列表
-     */
-    private ArrayList<Value> buildFuncRParams(FuncRParamsNode funcRParamsNode, List<LLVMType> expectedTypes) {
-        ArrayList<Value> values = new ArrayList<>();
-        List<ExpNode> expNodes = funcRParamsNode.getExpNodes();
-
-        for (int i = 0; i < expNodes.size(); i++) {
-            // 生成实参
-            Value argument = buildExp(expNodes.get(i));
-
-            // 确保类型一致
-            LLVMType expectedType = expectedTypes.get(i);
-            Value convertedArgument = convertType(argument, expectedType);
-
-            values.add(convertedArgument);
-        }
-
-        return values;
-    }
 
 
     private Value convertType(Value value, LLVMType targetType) {
         if (value.getType().equals(targetType) || value.getType() == LLVMType.Void) {
             return value; // 类型相同，无需转换
-        } else if (value.getType().isBiggerThan(targetType)) {
+        }else if (value.getType() instanceof PointerType && targetType instanceof PointerType) {
+            // 如果两者都是指针类型，且指向的类型一致，无需转换
+            return value;
+        }else if (value.getType().isBiggerThan(targetType)) {
             // 需要截断，添加 trunc 指令
             Trunc truncInstr = new Trunc(tempName + getVarId(), value, curBlock, targetType);
             curBlock.addInstr(truncInstr);

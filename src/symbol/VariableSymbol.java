@@ -12,15 +12,20 @@ public class VariableSymbol extends Symbol {
     private boolean isGlobal;
     private Value LLVMIR;
     private ArrayList<Integer> initialValues;
-
     public boolean isGlobal() {
         return isGlobal;
     }
-
     private boolean isZeroInitialized = false;
-
-
     private LLVMType LLVMType;
+    private int length = 0; // 数组长度，仅对数组有效
+
+    public int getLength() {
+        return length;
+    }
+
+    public void setLength(int length) {
+        this.length = length;
+    }
 
 
     public Value getLLVMIR() {

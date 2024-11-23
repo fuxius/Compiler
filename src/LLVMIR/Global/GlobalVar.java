@@ -1,5 +1,6 @@
 package LLVMIR.Global;
 
+import LLVMIR.LLVMType.ArrayType;
 import LLVMIR.LLVMType.LLVMType;
 import LLVMIR.LLVMType.PointerType;
 import LLVMIR.Base.Value;
@@ -12,12 +13,12 @@ import java.util.Objects;
  */
 public class GlobalVar extends Value {
     private final ArrayList<Integer> initial; // 初始值列表
-    private final boolean isZeroInitial;      // 是否零初始化
-    private final int len;                    // 数组长度
-    private final boolean isConst;            // 是否为常量
+    private final boolean isZeroInitial;     // 是否零初始化
+    private final int len;                   // 数组长度
+    private final boolean isConst;           // 是否为常量
 
     /**
-     * 构造全局变量
+     * 构造全局变量（非字符串类型）
      *
      * @param name          全局变量名
      * @param type          全局变量类型
@@ -39,6 +40,11 @@ public class GlobalVar extends Value {
         // 如果是零初始化，填充默认值
         if (isZeroInitial) {
             initializeWithZero();
+        }else {
+            // 如果初始值列表长度小于数组长度，填充零值
+            while (this.initial.size() < len) {
+                this.initial.add(0);
+            }
         }
     }
 
@@ -84,6 +90,7 @@ public class GlobalVar extends Value {
         return ((PointerType) type).getPointedType();
     }
 
+
     /**
      * 构造数组类型的字符串表示
      *
@@ -91,10 +98,11 @@ public class GlobalVar extends Value {
      * @return 数组类型的字符串
      */
     private String getArrayRepresentation(LLVMType pointedType) {
+        ArrayType Type = (ArrayType) pointedType;
         StringBuilder arrayBuilder = new StringBuilder("[")
                 .append(len)
                 .append(" x ")
-                .append(pointedType.isInt8() ? "i8" : "i32")
+                .append(Type.getElementType().isInt8() ? "i8" : "i32")
                 .append("] ");
 
         if (isZeroInitial) {
@@ -105,8 +113,8 @@ public class GlobalVar extends Value {
                 if (i > 0) {
                     arrayBuilder.append(", ");
                 }
-                arrayBuilder.append(pointedType.isInt8() ? "i8 " : "i32 ")
-                        .append(pointedType.isInt8() ? (initial.get(i) & 0xFF) : initial.get(i));
+                arrayBuilder.append(Type.getElementType().isInt8() ? "i8 " : "i32 ")
+                        .append(Type.getElementType().isInt8() ? (initial.get(i) & 0xFF) : initial.get(i));
             }
             arrayBuilder.append("]");
         }
