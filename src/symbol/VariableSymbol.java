@@ -52,11 +52,11 @@ public class VariableSymbol extends Symbol {
         isZeroInitialized = zeroInitialized;
     }
 
-    public LLVMIR.LLVMType.LLVMType getLLVMType() {
+    public LLVMType getLLVMType() {
         return LLVMType;
     }
 
-    public void setLLVMType(LLVMIR.LLVMType.LLVMType LLVMType) {
+    public void setLLVMType(LLVMType LLVMType) {
         this.LLVMType = LLVMType;
     }
 

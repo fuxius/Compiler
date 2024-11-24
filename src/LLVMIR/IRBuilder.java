@@ -68,38 +68,33 @@ public class IRBuilder {
         // 添加声明：输出一个字符串
         module.addFunction(new Function("putstr",LLVMType.Void));
     }
-
+    private void resetIds() {
+        paramId = 0; // 参数编号从 0 开始
+        varId = 0;
+        blockId = 0;
+    }
     private int getVarId() {
-        if(varId==152){
-            int u=1;
-        }
-        varId++;
-        return varId;
+        return ++varId;
     }
 
     private int getFuncId() {
-        funcId++;
-        return funcId;
+        return ++funcId;
     }
 
     private int getBlockId() {
-        blockId++;
-        return blockId;
+        return ++blockId;
     }
 
     private int getGlobalId() {
-        globalId++;
-        return globalId;
+        return ++globalId;
     }
 
     private int getStrId() {
-        strId++;
-        return strId;
+        return ++strId;
     }
 
     private int getParamId() {
-        paramId++;
-        return paramId;
+        return ++paramId;
     }
 
     public Module getModule() {
@@ -168,7 +163,7 @@ public class IRBuilder {
         // 获取常量符号信息（在语义分析阶段已设置好符号信息）
         VariableSymbol constSymbol = constDefNode.getVariableSymbol();
 
-        if (symbolTable.getCurrentScopeLevel() == 1) {
+        if (isGlobal) {
             // 全局常量
             GlobalVar globalVar = new GlobalVar(
                     globalName + getGlobalId(),
@@ -221,8 +216,12 @@ public class IRBuilder {
      * @param allocaInstr 分配的内存指令
      */
     private void initializeScalarConstant(VariableSymbol constSymbol, Alloca allocaInstr) {
-        int value = constSymbol.getInitialValues().get(0);
-        Store storeInstr = new Store(new Constant(value), allocaInstr, curBlock);
+        // 获取初始值
+        Value initialValue = new Constant(constSymbol.getInitialValues().get(0));
+        // 进行类型转换
+        Value convertedValue = convertType(initialValue, constSymbol.getLLVMType());
+        // 创建存储指令
+        Store storeInstr = new Store(convertedValue, allocaInstr, curBlock);
         curBlock.addInstr(storeInstr);
     }
 
@@ -243,7 +242,12 @@ public class IRBuilder {
 
             // 获取初始值（如果不足，则补零）
             int value = (i < initialValues.size()) ? initialValues.get(i) : 0;
-            Store storeInstr = new Store(new Constant(value), getPtrInstr, curBlock);
+            Value initialValue = new Constant(value);
+            ArrayType arrayType = (ArrayType)constSymbol.getLLVMType();
+            // 进行类型转换
+            Value convertedValue = convertType(initialValue, arrayType.getElementType());
+            // 创建存储指令
+            Store storeInstr = new Store(convertedValue, getPtrInstr, curBlock);
             curBlock.addInstr(storeInstr);
         }
     }
@@ -314,7 +318,11 @@ public class IRBuilder {
                         curBlock.addInstr(getPtrInstr);
 
                         Value value = (i < values.size()) ? values.get(i) : new Constant(0);
-                        Store storeInstr = new Store(value, getPtrInstr, curBlock);
+                        ArrayType arrayType = (ArrayType)varSymbol.getLLVMType();
+                        // 进行类型转换
+                        Value convertedValue = convertType(value, arrayType.getElementType());
+                        // 创建存储指令
+                        Store storeInstr = new Store(convertedValue, getPtrInstr, curBlock);
                         curBlock.addInstr(storeInstr);
                     }
                 }
@@ -325,33 +333,38 @@ public class IRBuilder {
         }
     }
 
-
-
-
-
-    /**
-     * 遍历常量表达式
-     * ConstExp → AddExp
-     */
-    private void buildConstExp(ConstExpNode constExpNode) {
-        buildAddExp(constExpNode.getAddExpNode());
-    }
-
     /**
      * 遍历变量初值
      * InitVal → Exp | '{' [ Exp { ',' Exp } ] '}' | StringConst
      */
     private ArrayList<Value> buildInitVal(InitValNode initValNode) {
         ArrayList<Value> returnInstrs = new ArrayList<>();
+
         if (initValNode.getExpNode() != null) {
-            returnInstrs.add( buildExp(initValNode.getExpNode()));
+            // 处理单一表达式初值
+            returnInstrs.add(buildExp(initValNode.getExpNode()));
         } else if (initValNode.getExpNodeList() != null) {
-            for (ExpNode subExpNodeNode : initValNode.getExpNodeList()) {
-                returnInstrs.add(buildExp(subExpNodeNode));
+            // 处理表达式列表初值
+            for (ExpNode subExpNode : initValNode.getExpNodeList()) {
+                returnInstrs.add(buildExp(subExpNode));
             }
+        } else if (initValNode.getStringConst() != null) {
+            // 处理字符串常量
+            String str = initValNode.getStringConst();
+            for (int i = 0; i < str.length(); i++) {
+                char c = str.charAt(i);
+                // 创建 i8 常量，每个字符对应一个 i8 值
+                Constant charConst = new Constant((int) c, LLVMType.Int8);
+                returnInstrs.add(charConst);
+            }
+            // 可选：添加 null 终止符 '\0'
+            Constant nullTerminator = new Constant(0, LLVMType.Int8);
+            returnInstrs.add(nullTerminator);
         }
+
         return returnInstrs;
     }
+
 
     /**
      * 生成 LLVM IR 的函数定义
@@ -361,7 +374,9 @@ public class IRBuilder {
         // 获取函数符号并设置符号表
         FunctionSymbol functionSymbol = funcDefNode.getFunctionSymbol();
         String returnType = functionSymbol.getReturnType();
-
+        // 函数参数处理
+        symbolTable.enterScopeForLLVM();
+        resetIds();
         // 确定返回类型
         LLVMType retType = switch (returnType) {
             case "int" -> LLVMType.Int32;
@@ -378,12 +393,6 @@ public class IRBuilder {
         // 函数入口基本块
         curBlock = new BasicBlock(blockName + getBlockId(), curFunc);
         curFunc.addBasicBlock(curBlock);
-
-        // 函数参数处理
-        symbolTable.enterScopeForLLVM();
-        paramId = 0; // 参数编号从 0 开始
-        varId = 0;
-        blockId = 0;
         if (funcDefNode.getFuncFParamsNode() != null) {
             buildFuncFParams(funcDefNode.getFuncFParamsNode());
         }
@@ -412,8 +421,7 @@ public class IRBuilder {
     private void buildMainFuncDef(MainFuncDefNode mainFuncDefNode) {
         // 进入 main 函数作用域，重置 ID 计数器
         symbolTable.enterScopeForLLVM();
-        varId = 0;
-        blockId = 0;
+        resetIds();
         // 初始化 LLVM Function 对象，设置返回类型为 Int32
         curFunc = new Function("@main", LLVMType.Int32);
         module.addFunction(curFunc); // 将主函数添加到模块中
@@ -629,10 +637,6 @@ public class IRBuilder {
             case FOR:
                 // for 语句 Stmt → 'for' '(' [ForStmt] ';' [Cond] ';' [ForStmt] ')' Stmt
 
-                // 构建初始化语句（如果存在）
-                if (stmtNode.getForStmtNode1() != null) {
-                    buildForStmt(stmtNode.getForStmtNode1(), funcTypeToken);
-                }
                 // 创建基本块：条件块、循环体块、更新块和继续块
                 BasicBlock condBlock = new BasicBlock(blockName + getBlockId(), curFunc);
                 BasicBlock bodyBlock = new BasicBlock(blockName + getBlockId(), curFunc);
@@ -644,14 +648,16 @@ public class IRBuilder {
                 curFunc.addBasicBlock(bodyBlock);
                 curFunc.addBasicBlock(updateBlock);
                 curFunc.addBasicBlock(continueBlock);
+                // 初始化
+                if (stmtNode.getForStmtNode1() != null) {
+                    buildForStmt(stmtNode.getForStmtNode1(), funcTypeToken);
+                }
 
-                // 跳转到条件块
                 curBlock.addInstr(new Branch(condBlock, curBlock));
 
-
+                curBlock = condBlock;
                 if (stmtNode.getCondNode() != null) {
                     // 构建条件表达式
-                    curBlock = condBlock;
                     buildCond(stmtNode.getCondNode(), bodyBlock, continueBlock);
                 } else {
                     // 如果没有条件表达式，始终跳转到循环体块
@@ -1002,7 +1008,9 @@ public class IRBuilder {
                 // 一元非运算符，先比较是否为0，然后扩展结果
                 Icmp cmpInstr = new Icmp(operand, new Constant(0), tempName + getVarId(), curBlock, Icmp.OP.EQ);
                 curBlock.addInstr(cmpInstr);
-                return convertType(cmpInstr, LLVMType.Int32);
+                Zext zextInstr = new Zext(tempName + getVarId(), cmpInstr, curBlock, LLVMType.Int32);
+                curBlock.addInstr(zextInstr);
+                return zextInstr;
             }
         }
 

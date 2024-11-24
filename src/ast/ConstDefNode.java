@@ -52,6 +52,7 @@ public class ConstDefNode {
         // 确定基本类型和数组长度
         String baseType = variableSymbol.getBaseType();
         int length = constExpNode != null ? constExpNode.evaluate() : 0;
+        variableSymbol.setLength(length);
 
         // 计算 LLVM 类型
         LLVMType llvmType = determineLLVMType(baseType, length);
