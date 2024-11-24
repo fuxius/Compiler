@@ -17,7 +17,7 @@ public class LValNode {
 
     private Token token;
 
-
+    private VariableSymbol variableSymbol; //符号表项
 
 
     public Token getToken() {
@@ -28,6 +28,14 @@ public class LValNode {
         this.token = token;
         this.ident = token.getValue();
         this.expNode = expNode;
+    }
+
+    public VariableSymbol getVariableSymbol() {
+        return variableSymbol;
+    }
+
+    public void setVariableSymbol(VariableSymbol variableSymbol) {
+        this.variableSymbol = variableSymbol;
     }
 
     public String getIdent() {

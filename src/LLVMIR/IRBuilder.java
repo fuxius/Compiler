@@ -462,7 +462,7 @@ public class IRBuilder {
     private void buildFuncFParam(FuncFParamNode funcFParamNode) {
         // 从符号表中查找参数信息
         String paramName = funcFParamNode.getToken().getValue();
-        VariableSymbol varSymbol = (VariableSymbol) symbolTable.lookup(paramName);
+        VariableSymbol varSymbol = funcFParamNode.getVariableSymbol();
 
         // 确定形参的 LLVM 类型
         LLVMType llvmType;
@@ -845,7 +845,7 @@ public class IRBuilder {
         // 获取左值标识符（变量名）
         String name = lValNode.getToken().getValue();
         // 从符号表中获取符号
-        VariableSymbol symbol =  (VariableSymbol) symbolTable.lookup(name);
+        VariableSymbol symbol =  lValNode.getVariableSymbol();
         ArrayList<Value> values = new ArrayList<>();
 
         // 如果左值有下标（数组），则构建对应的偏移值
@@ -1063,7 +1063,7 @@ public class IRBuilder {
      */
     private Value buildLValForValue(LValNode lValNode) {
         // 从符号表中查找变量或数组的符号信息
-        VariableSymbol symbol = (VariableSymbol) symbolTable.lookup(lValNode.getIdent());
+        VariableSymbol symbol = lValNode.getVariableSymbol();
         Value baseValue = symbol.getLLVMIR();
 
         if (symbol.getDimension() == 0) {

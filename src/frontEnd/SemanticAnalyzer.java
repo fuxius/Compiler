@@ -311,6 +311,7 @@ public class SemanticAnalyzer {
             String baseName = getBaseType(bTypeToken);
             VariableSymbol symbol = new VariableSymbol(name, symbolTable.getCurrentScopeLevel(), typeName, isConst, dimension,baseName);
             symbolTable.addSymbol(symbol);
+            funcFParamNode.setVariableSymbol(symbol);
         }
 
     }
@@ -499,6 +500,7 @@ public class SemanticAnalyzer {
             errorHandler.reportError(lineNumber, ErrorType.UNDEFINED_IDENT);
         } else if (symbol instanceof VariableSymbol) {
             VariableSymbol variableSymbol = (VariableSymbol) symbol;
+            lValNode.setVariableSymbol(variableSymbol);
             if (isAssignment && variableSymbol.isConst()) {
                 // 检测错误类型 'h'
                 errorHandler.reportError(lineNumber, ErrorType.MODIFY_CONST);

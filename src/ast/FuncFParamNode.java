@@ -1,5 +1,6 @@
 package ast;
 
+import symbol.VariableSymbol;
 import token.Token;
 
 /**
@@ -11,6 +12,7 @@ public class FuncFParamNode {
     private String ident;
     private boolean isArray; // 是否为数组参数
     private Token token;
+    private VariableSymbol variableSymbol;
 
     public Token getToken() {
         return token;
@@ -21,6 +23,13 @@ public class FuncFParamNode {
         this.token = token;
         this.ident = token.getValue();
         this.isArray = isArray;
+    }
+    public VariableSymbol getVariableSymbol() {
+        return variableSymbol;
+    }
+
+    public void setVariableSymbol(VariableSymbol variableSymbol) {
+        this.variableSymbol = variableSymbol;
     }
 
     public BTypeNode getbTypeNode() {
