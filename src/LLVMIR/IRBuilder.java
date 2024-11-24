@@ -1044,8 +1044,28 @@ public class IRBuilder {
         }
         // 处理字符常量
         else if (primaryExpNode.getCharacterNode() != null) {
-            // 提取字符常量字符串中的第一个字符，并转换为整数值
-            int charValue = primaryExpNode.getCharacterNode().getCharConst().charAt(1);
+            // 提取字符常量字符串中的第一个字符，并转换为整数值,注意处理转义字符
+            // 提取字符常量字符串中的第一个字符，并转换为整数值,注意处理转义字符
+            String charConst = primaryExpNode.getCharacterNode().getCharConst();
+            int charValue;
+            if (charConst.charAt(1) == '\\') {
+                switch (charConst.charAt(2)) {
+                    case 'a': charValue = '\u0007'; break; // 警报字符
+                    case 'b': charValue = '\b'; break;    // 退格
+                    case 't': charValue = '\t'; break;    // 水平制表符
+                    case 'n': charValue = '\n'; break;    // 换行
+                    case 'v': charValue = '\u000B'; break; // 垂直制表符
+                    case 'f': charValue = '\f'; break;    // 换页
+                    case 'r': charValue = '\r'; break;    // 回车
+                    case '\\': charValue = '\\'; break;   // 反斜杠
+                    case '\'': charValue = '\''; break;   // 单引号
+                    case '"': charValue = '\"'; break;    // 双引号
+                    case '0': charValue = '\0'; break;    // 空字符
+                    default: throw new IllegalArgumentException("Unsupported escape sequence: \\" + charConst.charAt(2));
+                }
+            } else {
+                charValue = charConst.charAt(1);
+            }
             // 创建并返回字符常量，通常需要将字符常量值截取为8位整数
             return new Constant(charValue & 0xFF);
         }
