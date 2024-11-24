@@ -1149,6 +1149,10 @@ public class IRBuilder {
                 operand1 = new Zext(tempName + getVarId(), operand1, curBlock, LLVMType.Int32);
                 curBlock.addInstr((Instruction) operand1);
             }
+            if(operand2.getType() == LLVMType.Int1){
+                operand2 = new Zext(tempName + getVarId(), operand2, curBlock, LLVMType.Int32);
+                curBlock.addInstr((Instruction) operand2);
+            }
             // 根据操作符生成比较指令
             Icmp.OP op = switch (operator.getType()) {
                 case LSS -> Icmp.OP.SLT;
@@ -1233,6 +1237,15 @@ public class IRBuilder {
                 case NEQ -> Icmp.OP.NE;
                 default -> throw new IllegalStateException("Unexpected value: " + operator.getType());
             };
+            //如果是bool类型，需要转换为int类型
+            if(operand1.getType() == LLVMType.Int1){
+                operand1 = new Zext(tempName + getVarId(), operand1, curBlock, LLVMType.Int32);
+                curBlock.addInstr((Instruction) operand1);
+            }
+            if(operand2.getType() == LLVMType.Int1){
+                operand2 = new Zext(tempName + getVarId(), operand2, curBlock, LLVMType.Int32);
+                curBlock.addInstr((Instruction) operand2);
+            }
             Icmp icmpInstr = new Icmp(operand1, operand2, tempName + getVarId(), curBlock, op);
             curBlock.addInstr(icmpInstr);
 
