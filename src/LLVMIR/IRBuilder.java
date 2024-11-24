@@ -28,8 +28,6 @@ public class IRBuilder {
         return instance;
     }
     private SymbolTable symbolTable; // 符号表
-    private int scopeLevel = 1; // 当前作用域层级，初始为全局作用域1
-    private int loopCount = 0; // 循环嵌套层数，用于检测错误类型'm'
     private FunctionSymbol currentFunction = null;
     private boolean isGlobal = false;
     private int varId = 0;
@@ -593,32 +591,114 @@ public class IRBuilder {
 
             case IF:
                 // if 语句 Stmt → 'if' '(' Cond ')' Stmt [ 'else' Stmt ]
-//                buildCond(stmtNode.getCondNode());
-//                buildStmt(stmtNode.getStmtNode1(), funcTypeToken);
-//                if (stmtNode.getStmtNode2() != null) {
-//                    buildStmt(stmtNode.getStmtNode2(), funcTypeToken);
-//                }
+                // Step 1: 构造目标块
+                BasicBlock thenBlock = new BasicBlock(blockName + getBlockId(), curFunc); // thenBlock 的块
+                BasicBlock nextBlock = new BasicBlock(blockName + getBlockId(), curFunc);  // BasicBlock3 (后续)
+                curFunc.addBasicBlock(thenBlock);
+                curFunc.addBasicBlock(nextBlock);
+
+                BasicBlock elseBlock = null; // 如果有 else 语句则初始化 elseBlock
+                if (stmtNode.getStmtNode2() != null) {
+                    elseBlock = new BasicBlock(blockName + getBlockId(), curFunc); // Stmt2 的块
+                    curFunc.addBasicBlock(elseBlock);
+                }
+
+                // Step 2: 生成条件表达式
+                buildCond(stmtNode.getCondNode(), thenBlock, elseBlock != null ? elseBlock : nextBlock);
+
+                // Step 3: 构造 thenBlock 的内容
+                curBlock = thenBlock; // 当前块跳转到 thenBlock
+                buildStmt(stmtNode.getStmtNode1(), null); // 递归构造 if 分支语句
+                if (!curBlock.hasBr()) {
+                    curBlock.addInstr(new Branch(nextBlock, curBlock)); // 结束后跳转到后续块
+                }
+
+                // Step 4: 构造 elseBlock 的内容（如果有）
+                if (elseBlock != null) {
+                    curBlock = elseBlock; // 当前块跳转到 elseBlock
+                    buildStmt(stmtNode.getStmtNode2(), null); // 递归构造 else 分支语句
+                    if (!curBlock.hasBr()) {
+                        curBlock.addInstr(new Branch(nextBlock, curBlock)); // 结束后跳转到后续块
+                    }
+                }
+
+                // Step 5: 更新当前块为下一块
+                curBlock = nextBlock; // 当前块设置为 BasicBlock3
                 break;
 
             case FOR:
-//                // for 语句 Stmt → 'for' '(' [ForStmt] ';' [Cond] ';' [ForStmt] ')' Stmt
-//                if (stmtNode.getForStmtNode1() != null) {
-//                    buildForStmt(stmtNode.getForStmtNode1());
-//                }
-//                if (stmtNode.getCondNode() != null) {
-//                    buildCond(stmtNode.getCondNode());
-//                }
-//                if (stmtNode.getForStmtNode2() != null) {
-//                    buildForStmt(stmtNode.getForStmtNode2());
-//                }
-//                loopCount++;
-//                buildStmt(stmtNode.getStmtNode1(), funcTypeToken); // Corrected to build the body of the loop
-//                loopCount--;
+                // for 语句 Stmt → 'for' '(' [ForStmt] ';' [Cond] ';' [ForStmt] ')' Stmt
+
+                // 构建初始化语句（如果存在）
+                if (stmtNode.getForStmtNode1() != null) {
+                    buildForStmt(stmtNode.getForStmtNode1(), funcTypeToken);
+                }
+                // 创建基本块：条件块、循环体块、更新块和继续块
+                BasicBlock condBlock = new BasicBlock(blockName + getBlockId(), curFunc);
+                BasicBlock bodyBlock = new BasicBlock(blockName + getBlockId(), curFunc);
+                BasicBlock updateBlock = new BasicBlock(blockName + getBlockId(), curFunc);
+                BasicBlock continueBlock = new BasicBlock(blockName + getBlockId(), curFunc);
+
+                // 将基本块添加到函数中
+                curFunc.addBasicBlock(condBlock);
+                curFunc.addBasicBlock(bodyBlock);
+                curFunc.addBasicBlock(updateBlock);
+                curFunc.addBasicBlock(continueBlock);
+
+                // 跳转到条件块
+                curBlock.addInstr(new Branch(condBlock, curBlock));
+
+
+                if (stmtNode.getCondNode() != null) {
+                    // 构建条件表达式
+                    curBlock = condBlock;
+                    buildCond(stmtNode.getCondNode(), bodyBlock, continueBlock);
+                } else {
+                    // 如果没有条件表达式，始终跳转到循环体块
+                    curBlock.addInstr(new Branch(bodyBlock, curBlock));
+                }
+
+                // 将当前循环上下文推入堆栈
+                loopStack.push(new Loop(condBlock,bodyBlock, updateBlock, continueBlock));
+
+                // 构建循环体
+                curBlock = bodyBlock;
+                buildStmt(stmtNode.getStmtNode1(), funcTypeToken);
+                if (!curBlock.hasBr()) {
+                    curBlock.addInstr(new Branch(updateBlock, curBlock));
+                }
+
+                // 构建更新语句
+                curBlock = updateBlock;
+                if (stmtNode.getForStmtNode2() != null) {
+                    buildForStmt(stmtNode.getForStmtNode2(), funcTypeToken);
+                }
+                curBlock.addInstr(new Branch(condBlock, curBlock));
+
+                // 弹出当前循环上下文
+                loopStack.pop();
+
+                // 设置当前块为继续块
+                curBlock = continueBlock;
                 break;
 
             case BREAKorCONTINUE:
                 // break 和 continue 语句 Stmt → 'break' ';' | 'continue' ';'
-
+                if (stmtNode.getKeyword().equals("break")) {
+                    // break 语句
+                    if (loopStack.isEmpty()) {
+                        throw new IllegalStateException("Break statement not in loop");
+                    }
+                    Loop loop = loopStack.peek();
+                    curBlock.addInstr(new Branch(loop.getExit(), curBlock));
+                } else {
+                    // continue 语句
+                    if (loopStack.isEmpty()) {
+                        throw new IllegalStateException("Continue statement not in loop");
+                    }
+                    Loop loop = loopStack.peek();
+                    curBlock.addInstr(new Branch(loop.getUpdate(), curBlock));
+                }
                 break;
 
             case RETURN:
@@ -754,6 +834,7 @@ public class IRBuilder {
         }
     }
 
+
     public Value buildLValForAssign(LValNode lValNode) {
         // 获取左值标识符（变量名）
         String name = lValNode.getToken().getValue();
@@ -778,20 +859,7 @@ public class IRBuilder {
         }
     }
 
-    /**
-     * 遍历 ForStmt
-     * ForStmt → LVal '=' Exp
-     */
-    private void buildForStmt(ForStmtNode forStmtNode) {
-        if (forStmtNode.getlValNode() != null && forStmtNode.getExpNode() != null) {
-            // 遍历赋值的左值
-            Value lVal = buildLValForAssign(forStmtNode.getlValNode());
-            // 遍历赋值的表达式
-            Value exp = buildExp(forStmtNode.getExpNode());
-            Store storeInstr = new Store(exp, lVal, curBlock);
-            curBlock.addInstr(storeInstr);
-        }
-    }
+
 
     /**
      * 遍历表达式
@@ -1021,38 +1089,132 @@ public class IRBuilder {
             throw new UnsupportedOperationException("Only scalar and one-dimensional arrays are supported.");
         }
     }
-//    public Value buildRelExp(RelExpNode relExpNode) {
-//        // 构建操作数和运算符列表
-//        relExpNode.populateLists();
-//        List<AddExpNode> addExpNodes = relExpNode.getAddExpNodes();
-//        List<Token> operators = relExpNode.getOperators();
-//
-//        // 初始操作数
-//        Value operand1 = buildAddExp(addExpNodes.get(0));
-//
-//        // 遍历后续的 AddExp 和运算符
-//        for (int i = 0; i < operators.size(); i++) {
-//            Value operand2 = buildAddExp(addExpNodes.get(i + 1));
-//            Token operator = operators.get(i);
-//
-//            // 根据操作符生成比较指令
-//            Icmp.OP op = switch (operator.getType()) {
-//                case LSS -> Icmp.OP.SLT;
-//                case LEQ -> Icmp.OP.SLE;
-//                case GRE -> Icmp.OP.SGT;
-//                case GEQ -> Icmp.OP.SGE;
-//                default -> throw new IllegalStateException("Unexpected value: " + operator.getType());
-//            };
-//            Icmp icmpInstr = new Icmp(operand1, operand2, tempName + getVarId(), curBlock, op);
-//            curBlock.addInstr(icmpInstr);
-//
-//            // 更新操作数
-//            operand1 = icmpInstr;
-//        }
-//
-//        return operand1;
-//    }
+    // ForStmt → LVal '=' Exp
+    public void buildForStmt(ForStmtNode forStmtNode, Token funcTypeToken) {
+        Value value1 = buildLValForAssign(forStmtNode.getlValNode());
+        Value value2 = buildExp(forStmtNode.getExpNode());
+        LLVMType targetType = ((PointerType) value1.getType()).getPointedType();
+        Value convertedValue = convertType(value2, targetType);
+        curBlock.addInstr(new Store(convertedValue,value1, curBlock));
+    }
+    //条件表达式 Cond → LOrExp // 存在即可
+    public void buildCond(CondNode condNode,BasicBlock thenBlock, BasicBlock elseBlock){
+        buildLOrExp(condNode.getlOrExpNode(),thenBlock,elseBlock);
+    }
+    //RelExp → AddExp | RelExp ('<' | '<=' | '>' | '>=') AddExp
+    public Value buildRelExp(RelExpNode relExpNode) {
+        // 构建操作数和运算符列表
+        relExpNode.populateLists();
+        List<AddExpNode> addExpNodes = relExpNode.getAddExpNodes();
+        List<Token> operators = relExpNode.getOperators();
 
+        // 初始操作数
+        Value operand1 = buildAddExp(addExpNodes.get(0));
+        if(operators.size() == 0){
+            return operand1;
+        }
+        // 遍历后续的 AddExp 和运算符
+        for (int i = 0; i < operators.size(); i++) {
+            Value operand2 = buildAddExp(addExpNodes.get(i + 1));
+            Token operator = operators.get(i);
+            if(operand1.getType() == LLVMType.Int1){
+                operand1 = new Zext(tempName + getVarId(), operand1, curBlock, LLVMType.Int32);
+                curBlock.addInstr((Instruction) operand1);
+            }
+            // 根据操作符生成比较指令
+            Icmp.OP op = switch (operator.getType()) {
+                case LSS -> Icmp.OP.SLT;
+                case LEQ -> Icmp.OP.SLE;
+                case GRE -> Icmp.OP.SGT;
+                case GEQ -> Icmp.OP.SGE;
+                default -> throw new IllegalStateException("Unexpected value: " + operator.getType());
+            };
+            Icmp icmpInstr = new Icmp(operand1, operand2, tempName + getVarId(), curBlock, op);
+            curBlock.addInstr(icmpInstr);
+
+            // 更新操作数
+            operand1 = icmpInstr;
+        }
+
+        return operand1;
+    }
+
+
+    //  LAndExp → EqExp | LAndExp '&&' EqExp
+    public void buildLAndExp(LAndExpNode lAndExpNode, BasicBlock thenBlock, BasicBlock elseBlock) {
+        lAndExpNode.populateLists();
+        List<EqExpNode> eqExpNodes = lAndExpNode.getEqExpNodes();
+        List<String> operators = lAndExpNode.getOperators();
+        if (operators.isEmpty()) {
+            buildEqExp(eqExpNodes.get(0), thenBlock, elseBlock);
+            return;
+        }
+        for (int i = 0; i < operators.size(); i++) {
+            BasicBlock nextBlock = new BasicBlock(blockName + getBlockId(), curFunc);
+            curFunc.addBasicBlock(nextBlock);
+            buildEqExp(eqExpNodes.get(i), nextBlock, elseBlock);
+            curBlock = nextBlock;
+        }
+        buildEqExp(eqExpNodes.get(eqExpNodes.size() - 1), thenBlock, elseBlock);
+    }
+    //LOrExp → LAndExp | LOrExp '||' LAndExp
+    public void buildLOrExp(LOrExpNode lOrExpNode, BasicBlock thenBlock, BasicBlock elseBlock) {
+        lOrExpNode.populateLists();
+        List<LAndExpNode> lAndExpNodes = lOrExpNode.getlAndExpNodes();
+        List<String> operators = lOrExpNode.getOperators();
+        if (operators.isEmpty()) {
+            buildLAndExp(lAndExpNodes.get(0), thenBlock, elseBlock);
+            return;
+        }
+        for (int i = 0; i < operators.size(); i++) {
+            BasicBlock nextBlock = new BasicBlock(blockName + getBlockId(), curFunc);
+            curFunc.addBasicBlock(nextBlock);
+            buildLAndExp(lAndExpNodes.get(i), thenBlock, nextBlock);
+            curBlock = nextBlock;
+        }
+        buildLAndExp(lAndExpNodes.get(lAndExpNodes.size() - 1), thenBlock, elseBlock);
+    }
+    //EqExp → RelExp | EqExp ('==' | '!=') RelExp
+    public void buildEqExp(EqExpNode eqExpNode, BasicBlock thenBlock, BasicBlock elseBlock) {
+        // 构建操作数和运算符列表
+        eqExpNode.populateLists();
+        List<RelExpNode> relExpNodes = eqExpNode.getRelExpNodes();
+        List<Token> operators = eqExpNode.getOperators();
+
+        // 初始操作数
+        Value operand1 = buildRelExp(relExpNodes.get(0));
+        if (operators.isEmpty()) {
+            Value result;
+            if(operand1.getType() != LLVMType.Int1){
+                result = new Icmp(new Constant(0),operand1,tempName + getVarId(),curBlock,Icmp.OP.NE);
+                curBlock.addInstr((Instruction) result);
+            }else {
+                result = operand1;
+            }
+            curBlock.addInstr(new Branch(result, thenBlock, elseBlock, curBlock));
+            return;
+        }
+        // 遍历后续的 RelExp 和运算符
+        for (int i = 0; i < operators.size(); i++) {
+            Value operand2 = buildRelExp(relExpNodes.get(i + 1));
+            Token operator = operators.get(i);
+
+            // 根据操作符生成比较指令
+            Icmp.OP op = switch (operator.getType()) {
+                case EQL -> Icmp.OP.EQ;
+                case NEQ -> Icmp.OP.NE;
+                default -> throw new IllegalStateException("Unexpected value: " + operator.getType());
+            };
+            Icmp icmpInstr = new Icmp(operand1, operand2, tempName + getVarId(), curBlock, op);
+            curBlock.addInstr(icmpInstr);
+
+            // 更新操作数
+            operand1 = icmpInstr;
+        }
+
+        // 根据结果跳转到不同的基本块
+        curBlock.addInstr(new Branch( operand1,thenBlock,elseBlock, curBlock));
+    }
 
 
     private Value convertType(Value value, LLVMType targetType) {

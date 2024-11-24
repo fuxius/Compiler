@@ -1,5 +1,7 @@
 package LLVMIR.Base;
 
+import LLVMIR.Ins.Branch;
+import LLVMIR.Ins.Ret;
 import LLVMIR.LLVMType.LLVMType;
 import LLVMIR.Global.Function;
 
@@ -83,5 +85,13 @@ public class BasicBlock extends User {
             sb.append("\t").append(instr).append("\n");
         }
         return sb.toString();
+    }
+    // 判断是否已经有跳转指令
+    public boolean hasBr() {
+        if (instrs.isEmpty()) return false;
+
+        // 获取最后一条指令，判断是否是跳转指令
+        Instruction lastInstr = instrs.get(instrs.size() - 1);
+        return lastInstr instanceof Branch || lastInstr instanceof Ret;
     }
 }

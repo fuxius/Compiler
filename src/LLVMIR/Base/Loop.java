@@ -10,21 +10,20 @@ public class Loop {
     private final BasicBlock body;   // 循环体
     private final BasicBlock exit;   // 循环退出块
 
-    /**
-     * 构造循环
-     *
-     * @param header 循环头
-     * @param body   循环体
-     * @param exit   循环退出块
-     */
-    public Loop(BasicBlock header, BasicBlock body, BasicBlock exit) {
-        if (header == null || body == null || exit == null) {
-            throw new IllegalArgumentException("Header, body, and exit blocks cannot be null");
+    private final BasicBlock update; // 更新块
+    public Loop(BasicBlock header, BasicBlock body,BasicBlock update ,BasicBlock exit ){
+        if (header == null || body == null || exit == null || update == null) {
+            throw new IllegalArgumentException("Header, body, exit, and update blocks cannot be null");
         }
         this.header = header;
         this.body = body;
         this.exit = exit;
+        this.update = update;
     }
+    public BasicBlock getUpdate() {
+        return update;
+    }
+
 
     /**
      * 获取循环头
