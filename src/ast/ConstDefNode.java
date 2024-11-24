@@ -82,7 +82,7 @@ public class ConstDefNode {
     private LLVMType determineLLVMType(String baseType, int length) {
         if (constInitValNode.isStringConst()) {
             // 字符串常量
-            return new ArrayType(LLVMType.Int8, constInitValNode.evaluate().size() + 1);
+            return new ArrayType(LLVMType.Int8, length);
         } else if (length == 0) {
             // 标量类型
             return baseType.equals("int") ? LLVMType.Int32 : LLVMType.Int8;
