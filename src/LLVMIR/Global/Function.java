@@ -1,11 +1,14 @@
 package LLVMIR.Global;
 
 import LLVMIR.Base.BasicBlock;
+import LLVMIR.Base.Value;
 import LLVMIR.LLVMType.LLVMType;
 import LLVMIR.Base.Param;
 import LLVMIR.Base.User;
+import backEnd.Base.Register;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Objects;
 
@@ -18,6 +21,7 @@ public class Function extends User {
     private final List<BasicBlock> basicBlocks; // 函数包含的基本块
     private int varId;                      // 变量ID计数
     private int blockId;                    // 基本块ID计数
+    private HashMap<Value, Register> registerPool = new HashMap<>();    // 使用 HashMap 实现寄存器池
 
     /**
      * 构造函数
@@ -99,6 +103,24 @@ public class Function extends User {
      */
     public LLVMType getReturnType() {
         return returnType;
+    }
+
+    /**
+     * 获取寄存器池
+     *
+     * @return 寄存器池
+     */
+    public HashMap<Value, Register> getRegisterPool() {
+        return registerPool;
+    }
+
+    /**
+     * 设置寄存器池
+     *
+     * @param registerPool 寄存器池
+     */
+    public void setRegisterPool(HashMap<Value, Register> registerPool) {
+        this.registerPool = registerPool;
     }
 
     /**

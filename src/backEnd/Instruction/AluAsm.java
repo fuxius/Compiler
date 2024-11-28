@@ -2,12 +2,12 @@ package backEnd.Instruction;
 
 import backEnd.Base.AsmInstruction;
 import backEnd.Base.Register;
-public class Alu extends AsmInstruction {
+public class AluAsm extends AsmInstruction {
     public enum AluOp {
         // 逻辑运算
         and, or, xor, nor, sll, srl, sra,
         // 算术运算
-        add, sub, mul, div, rem,
+        addiu,addu, subu, mul, div,
         // 比较运算
         seq, sne, slt, sgt, sle, sge,
         // 移动
@@ -18,7 +18,7 @@ public class Alu extends AsmInstruction {
     private int imm;
 
     // 逻辑运算
-    public Alu(AluOp op, Register rd, Register rs, Register rt) {
+    public AluAsm(AluOp op, Register rd, Register rs, Register rt) {
         this.op = op;
         this.rd = rd;
         this.rs = rs;
@@ -26,28 +26,29 @@ public class Alu extends AsmInstruction {
     }
 
     // 移动
-    public Alu(AluOp op, Register rd, Register rs) {
+    public AluAsm(AluOp op, Register rd, Register rs) {
         this.op = op;
         this.rd = rd;
         this.rs = rs;
     }
 
     // 算术运算
-    public Alu(AluOp op, Register rd, Register rs, int imm) {
+    public AluAsm(AluOp op, Register rd, Register rs, int imm) {
         this.op = op;
         this.rd = rd;
         this.rs = rs;
         this.imm = imm;
     }
 
-    // 比较运算
-    public Alu(AluOp op, Register rd, Register rs, Register rt, int imm) {
+    //rd:目的寄存器 rs:源寄存器 rt:源寄存器 imm:立即数
+    public AluAsm(AluOp op, Register rd, Register rs, Register rt, int imm) {
         this.op = op;
         this.rd = rd;
         this.rs = rs;
         this.rt = rt;
         this.imm = imm;
     }
+
 
     public AluOp getOp() {
         return op;

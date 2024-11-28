@@ -35,7 +35,10 @@ public class Value {
     public String getName() {
         return Name;
     }
-
+    //去掉第一位的Name
+    public String getRealName() {
+        return Name.substring(1);
+    }
     /**
      * 设置值的名称
      *

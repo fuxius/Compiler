@@ -1,5 +1,6 @@
 import LLVMIR.IRBuilder;
 import ast.CompUnitNode;
+import backEnd.MipsBuilder;
 import frontEnd.Lexer;
 import frontEnd.Parser;
 //import frontEnd.SemanticAnalyzer;
@@ -31,6 +32,9 @@ public class Compiler {
             IRBuilder irBuilder = IRBuilder.getInstance();
             irBuilder.analyze(compUnitNode);
             irBuilder.outputLLVMIRToFile();
+            // 构建并生成 MIPS 汇编代码
+            MipsBuilder mipsBuilder = MipsBuilder.getInstance();
+            mipsBuilder.mipsBuilder(irBuilder.getModule());
 
 
         } catch (Exception e) {

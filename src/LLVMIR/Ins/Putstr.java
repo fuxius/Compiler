@@ -27,4 +27,8 @@ public class Putstr extends Instruction {
                 pointerType,
                 constStr.getName());
     }
+
+    public ConstStr getConstStr() {
+        return constStr;
+    }
 }

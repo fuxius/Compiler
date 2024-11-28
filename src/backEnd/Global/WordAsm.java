@@ -1,38 +1,25 @@
 package backEnd.Global;
 
-import java.util.ArrayList;
+import java.util.List;
 
-/**
- * WordAsm 类表示一个包含多个整数的汇编指令。
- * 它继承自 GlobalAsm 类。
- */
 public class WordAsm extends GlobalAsm {
-    private ArrayList<Integer> words;
+    private List<Integer> words;
 
-    /**
-     * 构造一个带有指定名称和整数列表的 WordAsm 对象。
-     *
-     * @param name  汇编指令的名称
-     * @param words 整数列表
-     */
-    public WordAsm(String name, ArrayList<Integer> words) {
-        super(name);
+    public WordAsm(String label, List<Integer> words) {
+        super(label);
         this.words = words;
     }
 
-    /**
-     * 返回 WordAsm 对象的字符串表示形式。
-     *
-     * @return WordAsm 对象的字符串表示形式
-     */
+    @Override
     public String toString() {
-        String result = super.toString() + " .word ";
+        StringBuilder sb = new StringBuilder();
+        sb.append(label).append(": .word ");
         for (int i = 0; i < words.size(); i++) {
-            result += words.get(i);
+            sb.append(words.get(i));
             if (i != words.size() - 1) {
-                result += ", ";
+                sb.append(", ");
             }
         }
-        return result;
+        return sb.toString();
     }
 }

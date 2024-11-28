@@ -20,10 +20,24 @@ public class LLVMType {
     }
 
     public boolean isInt8() {
+        // 添加对一维数组的判断
+        if (this instanceof PointerType) {
+            if (((PointerType) this).getPointedType() instanceof ArrayType) {
+                return ((ArrayType) ((PointerType) this).getPointedType()).getElementType().isInt8();
+            }
+            return ((PointerType) this).getPointedType() == Int8;
+        }
         return this == Int8;
     }
 
     public boolean isInt32() {
+        // 添加对一维数组的判断
+        if (this instanceof PointerType) {
+            if (((PointerType) this).getPointedType() instanceof ArrayType) {
+                return ((ArrayType) ((PointerType) this).getPointedType()).getElementType().isInt32();
+            }
+            return ((PointerType) this).getPointedType() == Int32;
+        }
         return this == Int32;
     }
 

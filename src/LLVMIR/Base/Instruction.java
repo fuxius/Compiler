@@ -55,4 +55,32 @@ public class Instruction extends User {
     public BasicBlock getParentBlock() {
         return parentBlock;
     }
+
+    /**
+     * 判断指令是否有LVal
+     *
+     * @return 是否有LVal
+     */
+    public boolean hasLVal() {
+        //如果指令是Getint或者Getchar，那么它有LVal
+        //如果指令是Alloca，那么它有LVal
+        //如果指令是Load，那么它有LVal
+        //如果指令是Getptr，那么它有LVal
+        //如果指令是Move，那么它有LVal
+        //如果指令是Zext，那么它有LVal
+        //如果指令是Trunc，那么它有LVal
+        //如果指令是Phi，那么它有LVal
+        //如果指令是Alloca，那么它有LVal
+        //如果指令是Store，那么它有LVal
+        //如果指令是Call且类型不是Void，那么它有LVal
+        //如果指令是Alu，那么它有LVal
+        //如果指令是Icmp，那么它有LVal
+
+        return instrType == InstrType.GETINT || instrType == InstrType.GETCHAR || instrType == InstrType.ALLOCA
+                || instrType == InstrType.LOAD || instrType == InstrType.GETPTR || instrType == InstrType.MOVE
+                || instrType == InstrType.ZEXT || instrType == InstrType.TRUNC || instrType == InstrType.PHI
+                || instrType == InstrType.ALLOCA || instrType == InstrType.STORE
+                || (instrType == InstrType.CALL && !getType().isVoid()) || instrType == InstrType.ALU
+                || instrType == InstrType.ICMP;
+    }
 }

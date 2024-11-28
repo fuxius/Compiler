@@ -136,4 +136,24 @@ public class GlobalVar extends Value {
             return (pointedType.isInt8() ? "i8 " : "i32 ") + (pointedType.isInt8() ? (value & 0xFF) : value);
         }
     }
+
+    // 初始值列表
+    public ArrayList<Integer> getInitial() {
+        return initial;
+    }
+
+    // 是否零初始化
+    public boolean isZeroInitial() {
+        return isZeroInitial;
+    }
+
+    // 是否为常量
+    public boolean isConst() {
+        return isConst;
+    }
+    // 数组长度
+    public int getLen() {
+        return len;
+    }
+
 }

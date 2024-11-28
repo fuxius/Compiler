@@ -3,9 +3,9 @@ package backEnd.Instruction;
 import backEnd.Base.AsmInstruction;
 import backEnd.Base.Register;
 
-public class Branch extends AsmInstruction {
+public class BranchAsm extends AsmInstruction {
     public enum BranchOp {
-        beq, bne, blez, bgtz, bltz, bgez
+        beq, bne, blt, bge, ble, bgt
     }
     private BranchOp op;
     private String label;
@@ -13,32 +13,36 @@ public class Branch extends AsmInstruction {
     private int imm;
 
     // beq, bne
-    public Branch(BranchOp op, Register rs, Register rt, String label) {
+    public BranchAsm(BranchOp op, Register rs, Register rt, String label) {
         this.op = op;
         this.rs = rs;
         this.rt = rt;
         this.label = label;
     }
-    // blez, bgtz, bltz, bgez
-    public Branch(BranchOp op, Register rs, String label) {
+    // blt, bge, ble, bgt
+    public BranchAsm(BranchOp op, Register rs, String label) {
         this.op = op;
         this.rs = rs;
         this.label = label;
     }
-    // beq, bne
-    public Branch(BranchOp op, Register rs, Register rt, int imm, String label) {
+    //  beq, bne
+    public BranchAsm(BranchOp op, Register rs, Register rt, int imm, String label) {
         this.op = op;
         this.rs = rs;
         this.rt = rt;
         this.imm = imm;
         this.label = label;
     }
-    // blez, bgtz, bltz, bgez
-    public Branch(BranchOp op, Register rs, int imm, String label) {
+    // blt, bge, ble, bgt
+    public BranchAsm(BranchOp op, Register rs, int imm, String label) {
         this.op = op;
         this.rs = rs;
         this.imm = imm;
         this.label = label;
+    }
+
+    public String getLabel() {
+        return label;
     }
 
     public BranchOp getOp() {

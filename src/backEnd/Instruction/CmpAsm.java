@@ -2,7 +2,7 @@ package backEnd.Instruction;
 
 import backEnd.Base.AsmInstruction;
 import backEnd.Base.Register;
-public class Cmp extends AsmInstruction {
+public class CmpAsm extends AsmInstruction {
     public enum CmpOp {
         seq, sne, slt, sgt, sle, sge
     }
@@ -10,14 +10,14 @@ public class Cmp extends AsmInstruction {
     private Register rd, rs, rt;
     private int imm;
     // 比较运算
-    public Cmp(CmpOp op, Register rd, Register rs, Register rt) {
+    public CmpAsm(CmpOp op, Register rd, Register rs, Register rt) {
         this.op = op;
         this.rd = rd;
         this.rs = rs;
         this.rt = rt;
     }
     // 比较运算
-    public Cmp(CmpOp op, Register rd, Register rs, int imm) {
+    public CmpAsm(CmpOp op, Register rd, Register rs, int imm) {
         this.op = op;
         this.rd = rd;
         this.rs = rs;

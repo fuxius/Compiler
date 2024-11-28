@@ -1,0 +1,15 @@
+.data
+g1: .word 2
+g2: .word 1, 2, 3, 4, 5, 6, 7, 8, 9, 10
+g3: .byte 0:1
+g4: .byte 0:10
+str1: .asciiz "This is a string
+"
+.text
+main
+1:
+	la $a0, str1
+	li $v0, 4
+	syscall
+	li $k0, 0
+	j null

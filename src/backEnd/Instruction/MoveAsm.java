@@ -2,11 +2,11 @@ package backEnd.Instruction;
 
 import backEnd.Base.AsmInstruction;
 import backEnd.Base.Register;
-public class Move extends AsmInstruction {
+public class MoveAsm extends AsmInstruction {
     private Register src;
     private Register dest;
 
-    public Move(Register src, Register dest) {
+    public MoveAsm(Register src, Register dest) {
         this.src = src;
         this.dest = dest;
     }

@@ -5,7 +5,7 @@ import backEnd.Base.Register;
 
 import java.util.ArrayList;
 
-public class Jump extends AsmInstruction {
+public class JumpAsm extends AsmInstruction {
     public enum JumpOp {
         j, jal, jr, jalr
     }
@@ -19,17 +19,17 @@ public class Jump extends AsmInstruction {
     private ArrayList<Mem> storeAsms;
 
     // j, jal
-    public Jump(JumpOp op, String label) {
+    public JumpAsm(JumpOp op, String label) {
         this.op = op;
         this.label = label;
     }
     // jr, jalr
-    public Jump(JumpOp op, Register rs) {
+    public JumpAsm(JumpOp op, Register rs) {
         this.op = op;
         this.rs = rs;
     }
     // j, jal
-    public Jump(JumpOp op, Register rs, int imm) {
+    public JumpAsm(JumpOp op, Register rs, int imm) {
         this.op = op;
         this.rs = rs;
         this.imm = imm;

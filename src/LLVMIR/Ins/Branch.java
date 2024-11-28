@@ -104,4 +104,8 @@ public class Branch extends Instruction {
             return String.format("br label %%%s", operands.get(0).getName());
         }
     }
+
+    public boolean isConditional() {
+        return isConditional;
+    }
 }
