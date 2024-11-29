@@ -18,10 +18,7 @@ import backEnd.Instruction.*;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
+import java.util.*;
 
 public class MipsBuilder {
     // 单例模式
@@ -135,7 +132,7 @@ public class MipsBuilder {
                     data.add(new ByteAsm(name, count));
                 } else {
                     // 单个未初始化的 char 变量，使用 .byte 0
-                    data.add(new ByteAsm(name, 1));
+                    data.add(new ByteAsm(name, 0));
                 }
             } else if (globalVar.getLen() > 0) {
                 // 初始化的 char 数组，使用 .byte 并列出所有初值
@@ -219,51 +216,67 @@ public class MipsBuilder {
 //        }
         switch (instruction.getInstrType()) {
             case ALU:
+                text.add(new Comment(instruction));
                 buildAlu((Alu) instruction);
                 break;
             case ALLOCA:
+                text.add(new Comment(instruction));
                 buildAlloca((Alloca) instruction);
                 break;
             case BRANCH:
+                text.add(new Comment(instruction));
                 buildBranch((Branch) instruction);
                 break;
             case CALL:
+                text.add(new Comment(instruction));
                 buildCall((Call) instruction);
                 break;
             case GETPTR:
+                text.add(new Comment(instruction));
                 buildGetPtr((GetPtr) instruction);
                 break;
             case ICMP:
+                text.add(new Comment(instruction));
                 buildIcmp((Icmp) instruction);
                 break;
             case LOAD:
+                text.add(new Comment(instruction));
                 buildLoad((Load) instruction);
                 break;
             case RETURN:
+                text.add(new Comment(instruction));
                 buildRet((Ret) instruction);
                 break;
             case STORE:
+                text.add(new Comment(instruction));
                 buildStore((Store) instruction);
                 break;
             case ZEXT:
+                text.add(new Comment(instruction));
                 buildZext((Zext) instruction);
                 break;
             case TRUNC:
+                text.add(new Comment(instruction));
                 buildTrunc((Trunc) instruction);
                 break;
             case GETINT:
+                text.add(new Comment(instruction));
                 buildGetInt((Getint) instruction);
                 break;
             case PUTSTR:
+                text.add(new Comment(instruction));
                 buildPutStr((Putstr) instruction);
                 break;
             case PUTINT:
+                text.add(new Comment(instruction));
                 buildPutInt((Putint) instruction);
                 break;
             case GETCHAR:
+                text.add(new Comment(instruction));
                 buildGetChar((Getchar) instruction);
                 break;
             case PUTCH:
+                text.add(new Comment(instruction));
                 buildPutCh((Putch) instruction);
                 break;
             default:
@@ -562,7 +575,8 @@ public class MipsBuilder {
         List<Value> params = call.getOperands().subList(1, call.getOperands().size());
 
         // 1. 寄存器分配
-        ArrayList<Register> registers = getRegisters(); // 获取所有寄存器
+        // 获取寄存器池中的所有寄存器 Hashset
+        ArrayList<Register> registers = getRegisters();
         // TODO:优化：仅保存 callInstr 中活跃使用的寄存器，并确保唯一性
 
         // 2. 初始化保存和恢复指令列表
@@ -857,8 +871,8 @@ public class MipsBuilder {
     // 生成 STORE 指令的汇编代码
     public void buildStore(Store store) {
         // 获取指针和值
-        Value ptr = store.getFrom();
-        Value val = store.getTo();
+        Value ptr = store.getTo();
+        Value val = store.getFrom();
         // 处理指针
         Register ptrReg = Register.getRegister(Register.K0.ordinal());
         if (ptr instanceof GlobalVar) {
@@ -939,7 +953,7 @@ public class MipsBuilder {
     // 生成 RET 指令的汇编代码
     public void buildRet(Ret ret) {
         // 如果是主函数，生成 Li 指令加载立即数 10 到 v0 寄存器，然后生成 syscall 指令
-        if (currentFunction.getName().equals("main")) {
+        if (currentFunction.getRealName().equals("main")) {
             text.add(new Li(Register.V0, 10));
             text.add(new Syscall());
             return;

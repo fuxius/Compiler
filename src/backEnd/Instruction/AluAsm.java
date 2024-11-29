@@ -73,7 +73,6 @@ public class AluAsm extends AsmInstruction {
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();
-        sb.append("\t");
         sb.append(op);
         sb.append(" ");
         sb.append(rd);
@@ -87,7 +86,6 @@ public class AluAsm extends AsmInstruction {
             sb.append(", ");
             sb.append(imm);
         }
-        sb.append("\n");
         return sb.toString();
     }
 }

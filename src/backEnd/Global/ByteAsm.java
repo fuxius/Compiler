@@ -30,7 +30,11 @@ public class ByteAsm extends GlobalAsm {
                 }
             }
         } else {
-            sb.append("0:").append(count);
+            if(count == 0) {
+                sb.append("0");
+            }else {
+                sb.append("0:").append(count);
+            }
         }
         return sb.toString();
     }
