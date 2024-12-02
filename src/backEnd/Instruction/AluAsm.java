@@ -5,7 +5,7 @@ import backEnd.Base.Register;
 public class AluAsm extends AsmInstruction {
     public enum AluOp {
         // 逻辑运算
-        and, or, xor, nor, sll, srl, sra,
+        and, andi ,or, xor, nor, sll, srl, sra,
         // 算术运算
         addiu,addu, subu, mul, div,
         // 比较运算
@@ -17,7 +17,6 @@ public class AluAsm extends AsmInstruction {
     private Register rd, rs, rt;
     private int imm;
 
-    // 逻辑运算
     public AluAsm(AluOp op, Register rd, Register rs, Register rt) {
         this.op = op;
         this.rd = rd;
@@ -25,10 +24,9 @@ public class AluAsm extends AsmInstruction {
         this.rt = rt;
     }
 
-    // 移动
-    public AluAsm(AluOp op, Register rd, Register rs) {
+    public AluAsm(AluOp op, Register rs, Register rt) {
         this.op = op;
-        this.rd = rd;
+        this.rt = rt;
         this.rs = rs;
     }
 
@@ -39,16 +37,6 @@ public class AluAsm extends AsmInstruction {
         this.rs = rs;
         this.imm = imm;
     }
-
-    //rd:目的寄存器 rs:源寄存器 rt:源寄存器 imm:立即数
-    public AluAsm(AluOp op, Register rd, Register rs, Register rt, int imm) {
-        this.op = op;
-        this.rd = rd;
-        this.rs = rs;
-        this.rt = rt;
-        this.imm = imm;
-    }
-
 
     public AluOp getOp() {
         return op;
@@ -75,13 +63,15 @@ public class AluAsm extends AsmInstruction {
         StringBuilder sb = new StringBuilder();
         sb.append(op);
         sb.append(" ");
-        sb.append(rd);
-        sb.append(", ");
+        if(rd != null) {
+            sb.append(rd);
+            sb.append(", ");
+        }
         sb.append(rs);
         if (rt != null) {
             sb.append(", ");
             sb.append(rt);
-        } else  {
+        } else {
             sb.append(", ");
             sb.append(imm);
         }

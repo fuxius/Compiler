@@ -43,4 +43,13 @@ public class CmpAsm extends AsmInstruction {
     public int getImm() {
         return imm;
     }
+
+    @Override
+    public String toString() {
+        if (rt == null) {
+            return op + " " + rd + ", " + rs + ", " + imm;
+        } else {
+            return op + " " + rd + ", " + rs + ", " + rt;
+        }
+    }
 }

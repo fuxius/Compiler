@@ -12,28 +12,13 @@ public class BranchAsm extends AsmInstruction {
     private Register rs, rt;
     private int imm;
 
-    // beq, bne
+
     public BranchAsm(BranchOp op, Register rs, Register rt, String label) {
         this.op = op;
         this.rs = rs;
         this.rt = rt;
         this.label = label;
     }
-    // blt, bge, ble, bgt
-    public BranchAsm(BranchOp op, Register rs, String label) {
-        this.op = op;
-        this.rs = rs;
-        this.label = label;
-    }
-    //  beq, bne
-    public BranchAsm(BranchOp op, Register rs, Register rt, int imm, String label) {
-        this.op = op;
-        this.rs = rs;
-        this.rt = rt;
-        this.imm = imm;
-        this.label = label;
-    }
-    // blt, bge, ble, bgt
     public BranchAsm(BranchOp op, Register rs, int imm, String label) {
         this.op = op;
         this.rs = rs;
@@ -60,13 +45,10 @@ public class BranchAsm extends AsmInstruction {
     // toString
     @Override
     public String toString() {
-        if (op == BranchOp.beq || op == BranchOp.bne) {
-            // 如果有立即数
-            if (imm != 0) {
-                return op + "\t"  + rs + ", " + imm + ", " + label;
-            }else return op + "\t" + rs + ", " + rt + ", " + label;
+        if (rt == null) {
+            return op + " " + rs + ", " + imm + ", " + label;
         } else {
-            return op + "\t" + rs + ", " + imm + ", " + label;
+            return op + " " + rs + ", " + rt + ", " + label;
         }
     }
 }

@@ -98,86 +98,88 @@ public class RegAlloc {
      */
     private void performRegisterAllocation() {
         // 按照支配树的顺序遍历基本块
-        visitBlock(currentFunction.getBasicBlocks().get(0)); // 访问并处理基本块
+        traverseBlock(currentFunction.getBasicBlocks().get(0)); // 访问并处理基本块
     }
 
     /**
      * 访问并处理基本块，进行寄存器分配和释放
      *
-     * @param entry 当前基本块
+     * @param currentBlock 当前基本块
      */
-    private void visitBlock(BasicBlock entry) {
-        List<Instruction> instrs = entry.getInstrs(); // 获取基本块的指令列表
-        HashSet<Value> localDefed = new HashSet<>(); // 初始化局部定义的变量集合
-        HashMap<Value, Instruction> lastUse = new HashMap<>(); // 初始化最后使用的指令映射
-        HashSet<Value> neverUsed = new HashSet<>(); // 初始化从未使用的变量集合
+    private void traverseBlock(BasicBlock currentBlock) {
+        List<Instruction> instructions = currentBlock.getInstrs(); // 获取当前基本块的指令列表
+        Set<Value> localDefinitions = new HashSet<>(); // 当前块中局部定义的变量集合
+        Map<Value, Instruction> lastUsageMap = new HashMap<>(); // 记录变量的最后使用指令
+        Set<Value> variablesNoLongerUsed = new HashSet<>(); // 不再使用的变量集合
 
         // 第一步：确定每个变量的最后使用指令
-        for (Instruction instr : instrs) {
-            for (Value value : instr.getOperands()) {
-                lastUse.put(value, instr); // 更新最后使用的指令
+        for (Instruction instruction : instructions) {
+            for (Value operand : instruction.getOperands()) {
+                lastUsageMap.put(operand, instruction); // 更新变量的最后使用指令
             }
         }
 
         // 第二步：遍历指令，释放不再活跃的寄存器，并进行寄存器分配
-        for (Instruction instr : instrs) {
-            for (Value operand : instr.getOperands()) {
-                // 判断是否是最后使用，且不在Out集合中，且已分配寄存器
-                if (lastUse.get(operand) == instr && !entry.getOutSet().contains(operand) && varToRegMap.containsKey(operand)) {
+        for (Instruction instruction : instructions) {
+            for (Value operand : instruction.getOperands()) {
+                // 如果是变量的最后一次使用，且不在后继块的活跃集合中，且已分配寄存器
+                if (lastUsageMap.get(operand) == instruction
+                        && !currentBlock.getOutSet().contains(operand)
+                        && varToRegMap.containsKey(operand)) {
                     Register reg = varToRegMap.get(operand);
-                    regToVarMap.remove(reg); // 移除寄存器映射
-                    neverUsed.add(operand); // 记录为不再使用
+                    regToVarMap.remove(reg); // 移除寄存器到变量的映射
+                    variablesNoLongerUsed.add(operand); // 标记变量不再使用
                 }
             }
 
             // 对有左值的指令进行寄存器分配
-            if (instr.hasLVal() && !(instr instanceof Alloca && instr.getType().isArray())) {
-                localDefed.add(instr); // 记录局部定义
-                allocateRegister(instr, entry); // 尝试分配寄存器
+            if (instruction.hasLVal() && !(instruction instanceof Alloca && instruction.getType().isArray())) {
+                localDefinitions.add(instruction); // 记录局部定义的变量
+                allocateRegister(instruction, currentBlock); // 分配寄存器
             }
         }
 
         // 第三步：递归处理直接支配的子基本块
-        for (BasicBlock block : entry.getImdom()) { // 遍历直接支配的基本块
-            HashMap<Register, Value> curChildNeverUse = new HashMap<>(); // 初始化当前子基本块从未使用的映射
+        for (BasicBlock childBlock : currentBlock.getImdom()) {
+            Map<Register, Value> temporarilyRemovedMappings = new HashMap<>(); // 临时移除的寄存器映射
 
-            for (Register reg : regToVarMap.keySet()) { // 遍历寄存器到变量的映射
-                Value var = regToVarMap.get(reg);
-                if (!block.getInSet().contains(var)) { // 如果寄存器对应的变量不在子基本块的In集合中
-                    curChildNeverUse.put(reg, var); // 记录为不再使用
+            // 移除在子块中不活跃的变量的寄存器映射
+            for (Map.Entry<Register, Value> entry : regToVarMap.entrySet()) {
+                Register reg = entry.getKey();
+                Value var = entry.getValue();
+                if (!childBlock.getInSet().contains(var)) {
+                    temporarilyRemovedMappings.put(reg, var);
                 }
             }
-
-            // 释放这些寄存器
-            for (Register reg : curChildNeverUse.keySet()) {
-                regToVarMap.remove(reg); // 移除寄存器到变量的映射
+            // 从寄存器映射中移除这些变量
+            for (Register reg : temporarilyRemovedMappings.keySet()) {
+                regToVarMap.remove(reg);
             }
 
             // 递归访问子基本块
-            visitBlock(block);
+            traverseBlock(childBlock);
 
             // 恢复寄存器映射
-            for (Map.Entry<Register, Value> entryNeverUse : curChildNeverUse.entrySet()) {
-                regToVarMap.put(entryNeverUse.getKey(), entryNeverUse.getValue()); // 恢复寄存器到变量的映射
-            }
+            regToVarMap.putAll(temporarilyRemovedMappings);
         }
 
         // 第四步：清理局部定义的寄存器映射
-        for (Value value : localDefed) {
-            if (varToRegMap.containsKey(value)) {
-                Register reg = varToRegMap.get(value);
+        for (Value var : localDefinitions) {
+            if (varToRegMap.containsKey(var)) {
+                Register reg = varToRegMap.get(var);
                 regToVarMap.remove(reg); // 移除寄存器到变量的映射
             }
         }
 
-        // 第五步：恢复未使用变量的寄存器映射
-        for (Value value : neverUsed) {
-            if (!localDefed.contains(value) && varToRegMap.containsKey(value)) {
-                Register reg = varToRegMap.get(value);
-                regToVarMap.put(reg, value);
+        // 第五步：恢复不再使用但仍需保留的变量的寄存器映射
+        for (Value var : variablesNoLongerUsed) {
+            if (!localDefinitions.contains(var) && varToRegMap.containsKey(var)) {
+                Register reg = varToRegMap.get(var);
+                regToVarMap.put(reg, var); // 恢复寄存器到变量的映射
             }
         }
     }
+
 
     /**
      * 为变量分配寄存器
