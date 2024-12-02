@@ -22,7 +22,10 @@ public class Function extends User {
     private int varId;                      // 变量ID计数
     private int blockId;                    // 基本块ID计数
     private HashMap<Value, Register> registerPool = new HashMap<>();    // 使用 HashMap 实现寄存器池
-
+    private HashMap<BasicBlock, ArrayList<BasicBlock>> preMap; // 前驱基本块
+    private HashMap<BasicBlock, ArrayList<BasicBlock>> sucMap; // 后继基本块
+    // 直接支配映射：每个基本块直接支配哪些基本块
+    private HashMap<BasicBlock, ArrayList<BasicBlock>> immediateDominatesMap;
     /**
      * 构造函数
      *
@@ -159,5 +162,34 @@ public class Function extends User {
 
         ret.append("}");
         return ret.toString();
+    }
+
+    public void setPreMap(HashMap<BasicBlock, ArrayList<BasicBlock>> preMap) {
+        this.preMap = preMap;
+    }
+
+    public void setSucMap(HashMap<BasicBlock, ArrayList<BasicBlock>> sucMap) {
+        this.sucMap = sucMap;
+    }
+
+    public HashMap<BasicBlock, ArrayList<BasicBlock>> getPreMap() {
+        return preMap;
+    }
+
+    public HashMap<BasicBlock, ArrayList<BasicBlock>> getSucMap() {
+        return sucMap;
+    }
+
+    // 获取直接支配映射
+    public HashMap<BasicBlock, ArrayList<BasicBlock>> getImmediateDominatesMap() {
+        return immediateDominatesMap;
+    }
+    /**
+     * 设置直接支配映射
+     *
+     * @param immediateDominatesMap 直接支配映射
+     */
+    public void setImdom(HashMap<BasicBlock, ArrayList<BasicBlock>> immediateDominatesMap) {
+        this.immediateDominatesMap = immediateDominatesMap;
     }
 }

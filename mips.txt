@@ -1,15 +1,294 @@
 .data
-g1: .word 2
-g2: .word 1, 2, 3, 4, 5, 6, 7, 8, 9, 10
-g3: .byte 0:1
-g4: .byte 0:10
-str1: .asciiz "This is a string
+g0: .word 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+g1: .word 0, 0, 0, 0, 0
+g2: .word 0, 0, 0, 0, 0
+g3: .word 1, 2, 3, 0, 0
+str0: .asciiz "21374275
 "
 .text
-main
-1:
-	la $a0, str1
-	li $v0, 4
-	syscall
-	li $k0, 0
-	j null
+main:
+	main_b0:
+		
+		#%t0 = alloca i32
+		addiu $s2, $sp, -4
+		
+		#call void @putstr(i8* getelementptr inbounds ([10 x i8], [10 x i8]* @str0, i64 0, i64 0))
+		la $a0, str0
+		li $v0, 4
+		syscall
+		
+		#ret i32 0
+		li $v0, 10
+		syscall
+func0:
+	func0_b0:
+		
+		#%t0 = alloca i32
+		addiu $s2, $sp, -12
+		
+		#store i32 %a1, i32* %t0
+		sw $a2, 0($s2)
+		
+		#%t1 = alloca i32
+		addiu $s7, $sp, -16
+		
+		#store i32 0, i32* %t1
+		li $k1, 0
+		sw $k1, 0($s7)
+		
+		#%t2 = alloca i32
+		addiu $t6, $sp, -20
+		
+		#store i32 0, i32* %t2
+		li $k1, 0
+		sw $k1, 0($t6)
+		
+		#br label %b1
+		j func0_b0
+	func0_b1:
+		
+		#%t3 = load i32, i32* %t2
+		lw $t5, 0($t6)
+		
+		#%t4 = load i32, i32* %t0
+		lw $t0, 0($s2)
+		
+		#%t5 = icmp slt i32 %t3, %t4
+		
+		#br i1 %t5, label %b2, label %b4
+		blt	$t5, 0, func0_b2
+		j func0_b4
+	func0_b2:
+		
+		#%t6 = load i32, i32* %t1
+		lw $t5, 0($s7)
+		
+		#%t7 = load i32, i32* %t2
+		lw $t0, 0($t6)
+		
+		#%t8 = getelementptr i32, i32* %a0, i32 %t7
+		sll $t0, $t0, 2
+		addu $t0, $a1, $t0
+		
+		#%t9 = load i32, i32* %t8
+		lw $t0, 0($t0)
+		
+		#%t10 = add nsw i32 %t6, %t9
+		addu $t5, $t5, $t0
+		
+		#store i32 %t10, i32* %t1
+		sw $t5, 0($s7)
+		
+		#br label %b3
+		j func0_b2
+	func0_b3:
+		
+		#%t11 = load i32, i32* %t2
+		lw $t5, 0($t6)
+		
+		#%t12 = add nsw i32 %t11, 1
+		addiu $t5, $t5, 1
+		
+		#store i32 %t12, i32* %t2
+		sw $t5, 0($t6)
+		
+		#br label %b1
+		j func0_b3
+	func0_b4:
+		
+		#%t13 = load i32, i32* %t1
+		lw $s2, 0($s7)
+		
+		#ret i32 %t13
+		addiu $v0, $s2, 0
+		jr $ra
+func1:
+	func1_b0:
+		
+		#%t0 = alloca i32
+		addiu $s2, $sp, -8
+		
+		#store i32 %a0, i32* %t0
+		sw $a1, 0($s2)
+		
+		#%t1 = load i32, i32* %t0
+		lw $s7, 0($s2)
+		
+		#%t2 = icmp eq i32 %t1, 1
+		
+		#br i1 %t2, label %b1, label %b3
+		beq	$s7, 1, func1_b1
+		j func1_b3
+	func1_b1:
+		
+		#ret i32 1
+		li $k0, 1
+		jr $ra
+		
+		#br label %b2
+		j func1_b1
+	func1_b2:
+		
+		#%t12 = sub nsw i32 0, 1
+		li $k0, 0
+		addiu $s2, $k0, -1
+		
+		#ret i32 %t12
+		addiu $v0, $s2, 0
+		jr $ra
+	func1_b3:
+		
+		#%t3 = load i32, i32* %t0
+		lw $s7, 0($s2)
+		
+		#%t4 = icmp eq i32 %t3, 2
+		
+		#br i1 %t4, label %b4, label %b6
+		beq	$s7, 2, func1_b4
+		j func1_b6
+	func1_b4:
+		
+		#ret i32 1
+		li $k0, 1
+		jr $ra
+		
+		#br label %b5
+		j func1_b4
+	func1_b5:
+		
+		#br label %b2
+		j func1_b5
+	func1_b6:
+		
+		#%t5 = load i32, i32* %t0
+		lw $s7, 0($s2)
+		
+		#%t6 = sub nsw i32 %t5, 1
+		subu $s7, $s7, 1
+		
+		#%t7 = call i32 @func1(i32 %t6)
+		move $a1, $s7
+		addiu $sp, $sp, -24
+		jal func1
+		lw $ra, -24($sp)
+		addiu $sp, $sp, 24
+		addiu $s7, $v0, 0
+		
+		#%t8 = load i32, i32* %t0
+		lw $s2, 0($s2)
+		
+		#%t9 = sub nsw i32 %t8, 2
+		subu $s2, $s2, 2
+		
+		#%t10 = call i32 @func1(i32 %t9)
+		move $a1, $s2
+		addiu $sp, $sp, -24
+		jal func1
+		lw $ra, -24($sp)
+		addiu $sp, $sp, 24
+		addiu $s2, $v0, 0
+		
+		#%t11 = add nsw i32 %t7, %t10
+		addu $s2, $s7, $s2
+		
+		#ret i32 %t11
+		addiu $v0, $s2, 0
+		jr $ra
+		
+		#br label %b5
+		j func1_b6
+func2:
+	func2_b0:
+		
+		#%t0 = alloca i32
+		addiu $s2, $sp, -16
+		
+		#store i32 %a2, i32* %t0
+		sw $a3, 0($s2)
+		
+		#%t1 = alloca i32
+		addiu $s7, $sp, -20
+		
+		#%t2 = alloca i32
+		addiu $t6, $sp, -24
+		
+		#store i32 0, i32* %t2
+		li $k1, 0
+		sw $k1, 0($t6)
+		
+		#store i32 0, i32* %t1
+		li $k1, 0
+		sw $k1, 0($s7)
+		
+		#br label %b1
+		j func2_b0
+	func2_b1:
+		
+		#%t3 = load i32, i32* %t1
+		lw $t5, 0($s7)
+		
+		#%t4 = load i32, i32* %t0
+		lw $t0, 0($s2)
+		
+		#%t5 = icmp slt i32 %t3, %t4
+		
+		#br i1 %t5, label %b2, label %b4
+		blt	$t5, 0, func2_b2
+		j func2_b4
+	func2_b2:
+		
+		#%t6 = load i32, i32* %t2
+		lw $t5, 0($t6)
+		
+		#%t7 = load i32, i32* %t1
+		lw $t0, 0($s7)
+		
+		#%t8 = getelementptr i32, i32* %a0, i32 %t7
+		sll $t0, $t0, 2
+		addu $t0, $a1, $t0
+		
+		#%t9 = load i32, i32* %t8
+		lw $t0, 0($t0)
+		
+		#%t10 = load i32, i32* %t1
+		lw $t4, 0($s7)
+		
+		#%t11 = getelementptr i32, i32* %a1, i32 %t10
+		sll $t4, $t4, 2
+		addu $t4, $a2, $t4
+		
+		#%t12 = load i32, i32* %t11
+		lw $t4, 0($t4)
+		
+		#%t13 = mul nsw i32 %t9, %t12
+		mul $t0, $t0, $t4
+		
+		#%t14 = add nsw i32 %t6, %t13
+		addu $t5, $t5, $t0
+		
+		#store i32 %t14, i32* %t2
+		sw $t5, 0($t6)
+		
+		#br label %b3
+		j func2_b2
+	func2_b3:
+		
+		#%t15 = load i32, i32* %t1
+		lw $t5, 0($s7)
+		
+		#%t16 = add nsw i32 %t15, 1
+		addiu $t5, $t5, 1
+		
+		#store i32 %t16, i32* %t1
+		sw $t5, 0($s7)
+		
+		#br label %b1
+		j func2_b3
+	func2_b4:
+		
+		#%t17 = load i32, i32* %t2
+		lw $s2, 0($t6)
+		
+		#ret i32 %t17
+		addiu $v0, $s2, 0
+		jr $ra

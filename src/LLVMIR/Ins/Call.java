@@ -4,14 +4,16 @@ import LLVMIR.Base.BasicBlock;
 import LLVMIR.Base.Instruction;
 import LLVMIR.Base.Value;
 import LLVMIR.Global.Function;
+import backEnd.Base.Register;
 
+import java.util.HashSet;
 import java.util.List;
 
 /**
  * 表示函数调用指令
  */
 public class Call extends Instruction {
-
+     private HashSet<Register> activeRegs;
     /**
      * 构造函数调用指令
      *
@@ -56,5 +58,13 @@ public class Call extends Instruction {
         String callPrefix = type.isVoid() ? "call" : (Name + " = call");
 
         return String.format("%s %s %s(%s)", callPrefix, callType, operands.get(0).getName(), args.toString());
+    }
+
+    public HashSet<Register> getActiveRegs() {
+        return activeRegs;
+    }
+
+    public void setActiveRegs(HashSet<Register> activeRegs) {
+        this.activeRegs = activeRegs;
     }
 }

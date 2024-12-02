@@ -1,12 +1,15 @@
 package LLVMIR.Base;
 
+import LLVMIR.Global.GlobalVar;
 import LLVMIR.Ins.Branch;
 import LLVMIR.Ins.Ret;
 import LLVMIR.LLVMType.LLVMType;
 import LLVMIR.Global.Function;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 /**
  * 表示 LLVM IR 中的基本块，每个基本块是一个指令的序列
@@ -14,6 +17,25 @@ import java.util.List;
 public class BasicBlock extends User {
     private final List<Instruction> instrs; // 基本块中的指令
     private final Function parentFunc;      // 所属的函数
+    private List<BasicBlock> predecessors; // 前驱基本块
+    private List<BasicBlock> successors; // 后继基本块
+    // 支配者基本块列表
+    private List<BasicBlock> dominators;
+    // 被支配基本块列表
+    private List<BasicBlock> dominatedBy;
+    // 直接支配者
+    private BasicBlock immediateDominator;
+    // 直接支配的基本块列表
+    private List<BasicBlock> immediateDominates;
+    // 支配边界列表
+    private List<BasicBlock> dominanceFrontier;
+    // 直接支配树的深度
+    private int imdomDepth;
+    // 活跃变量分析所需的属性
+    private HashSet<Value> defSet;
+    private HashSet<Value> useSet;
+    private HashSet<Value> inSet;
+    private HashSet<Value> outSet;
 
     /**
      * 构造基本块
@@ -30,6 +52,18 @@ public class BasicBlock extends User {
 
         this.instrs = new ArrayList<>();
         this.parentFunc = parentFunc;
+
+        this.predecessors = new ArrayList<>();
+        this.successors = new ArrayList<>();
+        this.dominators = new ArrayList<>();
+        this.dominatedBy = new ArrayList<>();
+        this.immediateDominates = new ArrayList<>();
+        this.dominanceFrontier = new ArrayList<>();
+        this.imdomDepth = 0;
+        this.defSet = new HashSet<>();
+        this.useSet = new HashSet<>();
+        this.inSet = new HashSet<>();
+        this.outSet = new HashSet<>();
     }
 
     /**
@@ -92,6 +126,158 @@ public class BasicBlock extends User {
 
         // 获取最后一条指令，判断是否是跳转指令
         Instruction lastInstr = instrs.get(instrs.size() - 1);
-        return lastInstr instanceof Branch || lastInstr instanceof Ret;
+        return lastInstr instanceof Branch ;
     }
+
+    public List<BasicBlock> getPredecessors() {
+        return predecessors;
+    }
+
+    public void setPredecessors(List<BasicBlock> predecessors) {
+        this.predecessors = predecessors;
+    }
+
+    public List<BasicBlock> getSuccessors() {
+        return successors;
+    }
+
+    public void setSuccessors(List<BasicBlock> successors) {
+        this.successors = successors;
+    }
+
+
+    // 获取最后一条指令
+    public Instruction getLastInstr() {
+        if (instrs.isEmpty()) return null;
+        return instrs.get(instrs.size() - 1);
+    }
+
+    // 添加前驱和后继
+    public void addPredecessor(BasicBlock pred) {
+        predecessors.add(pred);
+    }
+
+    public void addSuccessor(BasicBlock succ) {
+        successors.add(succ);
+    }
+
+
+
+
+
+    public HashSet<Value> getDefSet() {
+        return defSet;
+    }
+
+    public HashSet<Value> getUseSet() {
+        return useSet;
+    }
+
+    public HashSet<Value> getInSet() {
+        return inSet;
+    }
+
+    public void setInSet(HashSet<Value> inSet) {
+        this.inSet = inSet;
+    }
+
+    public HashSet<Value> getOutSet() {
+        return outSet;
+    }
+
+    public void setOutSet(HashSet<Value> outSet) {
+        this.outSet = outSet;
+    }
+
+    public void setDefSet(HashSet<Value> defSet) {
+        this.defSet = defSet;
+    }
+
+    public void setUseSet(HashSet<Value> useSet) {
+        this.useSet = useSet;
+    }
+
+    // 计算Def和Use集合
+    public void computeDefUse() {
+        HashSet<Value> def = new HashSet<>();
+        HashSet<Value> use = new HashSet<>();
+        // 遍历基本块中的指令
+        for (Instruction instr : instrs) {
+            //TODO:插入phi指令以后需要特殊处理
+
+            // 遍历指令的操作数
+            for (Value value : instr.getOperands()) {
+                // 如果操作数不在 Def 集合中，且是指令、参数或全局变量，则加入 Use 集合
+                if (!def.contains(value) && (value instanceof Instruction || value instanceof Param || value instanceof GlobalVar)) {
+                    use.add(value);
+                }
+            }
+            // 如果指令有左值，且不在 Use 集合中，则加入 Def 集合
+            if (!use.contains(instr) && instr.hasLVal()) {
+                def.add(instr);
+            }
+        }
+        this.useSet = use;
+        this.defSet = def;
+    }
+    // 获取支配者基本块列表
+    public List<BasicBlock> getDominators() {
+        return dominators;
+    }
+
+    // 设置支配者基本块列表
+    public void setDom(List<BasicBlock> dominators) {
+        this.dominators = dominators;
+    }
+
+    // 获取被支配基本块列表
+    public List<BasicBlock> getDominatedBy() {
+        return dominatedBy;
+    }
+
+    // 设置被支配基本块列表
+    public void setDominatedBy(List<BasicBlock> dominatedBy) {
+        this.dominatedBy = dominatedBy;
+    }
+
+    // 获取直接支配者
+    public BasicBlock getImmediateDominator() {
+        return immediateDominator;
+    }
+
+    // 设置直接支配者
+    public void setImdommedBy(BasicBlock immediateDominator) {
+        this.immediateDominator = immediateDominator;
+    }
+
+    // 获取直接支配的基本块列表
+    public List<BasicBlock> getImdom() {
+        return immediateDominates;
+    }
+
+    // 设置直接支配的基本块列表
+    public void setImdom(List<BasicBlock> immediateDominates) {
+        this.immediateDominates = immediateDominates;
+    }
+
+    // 获取支配边界列表
+    public List<BasicBlock> getDF() {
+        return dominanceFrontier;
+    }
+
+    // 设置支配边界列表
+    public void setDF(List<BasicBlock> dominanceFrontier) {
+        this.dominanceFrontier = dominanceFrontier;
+    }
+
+    // 获取直接支配树的深度
+    public int getImdomDepth() {
+        return imdomDepth;
+    }
+
+    // 设置直接支配树的深度
+    public void setImdomDepth(int imdomDepth) {
+        this.imdomDepth = imdomDepth;
+    }
+
 }

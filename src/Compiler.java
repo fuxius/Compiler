@@ -6,6 +6,7 @@ import frontEnd.Parser;
 //import frontEnd.SemanticAnalyzer;
 import frontEnd.SemanticAnalyzer;
 import error.ErrorHandler;
+import midEnd.Optimizer;
 
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -32,6 +33,9 @@ public class Compiler {
             IRBuilder irBuilder = IRBuilder.getInstance();
             irBuilder.analyze(compUnitNode);
             irBuilder.outputLLVMIRToFile();
+            // optimize
+            Optimizer optimizer = Optimizer.getInstance();
+            optimizer.run(irBuilder.getModule());
             // 构建并生成 MIPS 汇编代码
             MipsBuilder mipsBuilder = MipsBuilder.getInstance();
             mipsBuilder.mipsBuilder(irBuilder.getModule());

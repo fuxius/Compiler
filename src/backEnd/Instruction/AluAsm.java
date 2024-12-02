@@ -81,8 +81,7 @@ public class AluAsm extends AsmInstruction {
         if (rt != null) {
             sb.append(", ");
             sb.append(rt);
-        }
-        if (imm != 0) {
+        } else  {
             sb.append(", ");
             sb.append(imm);
         }

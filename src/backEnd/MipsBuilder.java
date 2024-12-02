@@ -113,8 +113,14 @@ public class MipsBuilder {
 
         if (type.isInt32()) { // 处理 int 类型
             if (globalVar.isZeroInitial()) {
-                // 未初始化的 int 变量，使用 .word 0
-                data.add(new WordAsm(name, Collections.singletonList(0)));
+                if (globalVar.getLen() > 0) {
+                    // 未初始化的 int 数组，使用 .word 0:<count>
+                    int count = globalVar.getLen();
+                    data.add(new WordAsm(name, Collections.nCopies(count, 0)));
+                } else {
+                    // 单个未初始化的 int 变量，使用 .word 0
+                    data.add(new WordAsm(name, Collections.singletonList(0)));
+                }
             } else if (globalVar.getLen() > 0) {
                 // 初始化的 int 数组，使用 .word 并列出所有初值
                 List<Integer> initial = globalVar.getInitial();
@@ -157,7 +163,7 @@ public class MipsBuilder {
     //生成函数的汇编代码
     public void buildFunction(Function function) {
         //生成函数标签
-        LableAsm lableAsm = new LableAsm(function.getRealName(),false);
+        LableAsm lableAsm = new LableAsm(function.getRealName()+":",false);
         text.add(lableAsm);
         //初始化函数的上下文
         initFunction(function);
@@ -198,7 +204,7 @@ public class MipsBuilder {
     //生成基本块的汇编代码
     public void buildBasicBlock(BasicBlock basicBlock) {
         //生成基本块标签
-        LableAsm lableAsm = new LableAsm(basicBlock.getRealName(),true);
+        LableAsm lableAsm = new LableAsm("\t"+basicBlock.getParentFunc().getRealName()+"_"+basicBlock.getName(),true);
         text.add(lableAsm);
         //遍历基本块中的指令并生成对应的汇编指令
         List<Instruction> instructions = basicBlock.getInstrs();
@@ -449,7 +455,7 @@ public class MipsBuilder {
         } else {
             //如果 registerPool 不包含 Alloca 指令，则创建一个新的 Mem 指令，将当前偏移量存储在栈中。
             text.add(new AluAsm(AluAsm.AluOp.addiu, Register.getRegister(Register.K0.ordinal()), Register.getRegister(Register.SP.ordinal()), getCurrentStackOffset()));
-            text.add(new Mem(Mem.MemOp.sw, getCurrentStackOffset(), Register.getRegister(Register.SP.ordinal()), Register.getRegister(Register.K0.ordinal())));
+            text.add(new Mem(Mem.MemOp.sw,getStackOffset(alloca), Register.getRegister(Register.SP.ordinal()), Register.getRegister(Register.K0.ordinal())));
         }
 
     }
@@ -470,11 +476,11 @@ public class MipsBuilder {
             if (rd != null) {
                 //如果 icmp 有对应的寄存器映射，则直接使用该寄存器生成一个 BranchAsm 指令。
                 Register rs = Register.getRegister(Register.K0.ordinal());
-                text.add(new BranchAsm(BranchAsm.BranchOp.bne, rd, rs, currentFunction.getRealName()+"_"+branch.getElseBlock().getName()));
+                text.add(new BranchAsm(BranchAsm.BranchOp.beq, rd, rs, currentFunction.getRealName()+"_"+branch.getElseBlock().getName()));
             } else {
                 //如果 icmp 没有对应的寄存器映射，则生成一个 Mem 指令，将 icmp 的结果存储在栈中。
                 text.add(new Mem(Mem.MemOp.lw, getStackOffset(icmp), Register.getRegister(Register.SP.ordinal()), Register.getRegister(Register.K0.ordinal())));
-                text.add(new BranchAsm(BranchAsm.BranchOp.bne, Register.getRegister(Register.K0.ordinal()), Register.getRegister(Register.K0.ordinal()), currentFunction.getRealName()+"_"+branch.getElseBlock().getName()));
+                text.add(new BranchAsm(BranchAsm.BranchOp.beq, null, Register.getRegister(Register.K0.ordinal()), 1,currentFunction.getRealName()+"_"+branch.getElseBlock().getName()));
             }
             //处理常规的条件分支,跳转到 else 块
             text.add(new JumpAsm(JumpAsm.JumpOp.j, currentFunction.getRealName()+"_"+branch.getElseBlock().getName()));
@@ -962,7 +968,7 @@ public class MipsBuilder {
         Value val = ret.getOperands().get(0);
         // 如果返回值为空，直接生成 ret 指令
         if (val == null) {
-            text.add(new JumpAsm(JumpAsm.JumpOp.j, Register.RA));
+            text.add(new JumpAsm(JumpAsm.JumpOp.jr, Register.RA));
             return;
         }
         // 处理返回值
@@ -979,7 +985,7 @@ public class MipsBuilder {
             text.add(new Mem(Mem.MemOp.lw, getStackOffset(val), Register.SP, Register.V0));
         }
         // 生成无条件跳转指令
-        text.add(new JumpAsm(JumpAsm.JumpOp.j, Register.RA));
+        text.add(new JumpAsm(JumpAsm.JumpOp.jr, Register.RA));
     }
 
     // 生成 GetInt 指令的汇编代码
@@ -1068,6 +1074,9 @@ public class MipsBuilder {
 
     // 生成所有的汇编代码
     public void mipsBuilder(Module module) {
+//        // 初始化寄存器池，调用RegisterAllocator类的allocateRegisters方法
+//        RegisterAllocator allocator = new RegisterAllocator();
+//        allocator.allocateRegisters(module);
         //初始化两个 ArrayList，分别用于存储数据段和文本段的汇编指令
         data = new ArrayList<>();
         text = new ArrayList<>();
@@ -1081,12 +1090,17 @@ public class MipsBuilder {
         }
         //遍历模块中的函数，生成文本段的汇编代码
         for (Function function : module.getFunctions()) {
-            //单独处理main函数
+            // 优先处理main函数
             if (function.getRealName().equals("main")) {
                 setInMain(true);
                 buildFunction(function);
                 setInMain(false);
-            }else {
+            }
+        }
+        //遍历模块中的函数，生成文本段的汇编代码
+        for (Function function : module.getFunctions()) {
+            // 处理非 main 函数
+            if (!function.getRealName().equals("main")) {
                 buildFunction(function);
             }
         }
@@ -1101,7 +1115,7 @@ public class MipsBuilder {
             for (AsmInstruction textAsm : text) {
                 //如果不是LabelAsm类型，添加缩进
                 if (!(textAsm instanceof LableAsm)) {
-                    writer.print("\t");
+                    writer.print("\t\t");
                 }
                 writer.println(textAsm.toString());
             }

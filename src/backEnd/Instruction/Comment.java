@@ -10,6 +10,6 @@ public class Comment extends AsmInstruction {
         this.llvmInstr = llvmInstr;
     }
     public String toString(){
-        return "\n#"+llvmInstr.toString();
+        return "\n"+"\t\t#"+llvmInstr.toString();
     }
 }

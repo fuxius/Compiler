@@ -21,6 +21,6 @@ public class MoveAsm extends AsmInstruction {
 
     @Override
     public String toString() {
-        return "mov " + src + ", " + dest;
+        return "move " + src + ", " + dest;
     }
 }

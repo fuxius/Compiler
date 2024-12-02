@@ -28,12 +28,6 @@ public class JumpAsm extends AsmInstruction {
         this.op = op;
         this.rs = rs;
     }
-    // j, jal
-    public JumpAsm(JumpOp op, Register rs, int imm) {
-        this.op = op;
-        this.rs = rs;
-        this.imm = imm;
-    }
 
     public JumpOp getOp() {
         return op;
@@ -69,7 +63,11 @@ public class JumpAsm extends AsmInstruction {
 
     @Override
     public String toString() {
-        return op + " " + label;
+        if (op == JumpOp.jr || op == JumpOp.jalr) {
+            return op + " " + rs;
+        } else {
+            return op + " " + label;
+        }
     }
 
 }

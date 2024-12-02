@@ -74,27 +74,27 @@ public class IRBuilder {
         blockId = 0;
     }
     private int getVarId() {
-        return ++varId;
+        return varId++;
     }
 
     private int getFuncId() {
-        return ++funcId;
+        return funcId++;
     }
 
     private int getBlockId() {
-        return ++blockId;
+        return blockId++;
     }
 
     private int getGlobalId() {
-        return ++globalId;
+        return globalId++;
     }
 
     private int getStrId() {
-        return ++strId;
+        return strId++;
     }
 
     private int getParamId() {
-        return ++paramId;
+        return paramId++;
     }
 
     public Module getModule() {

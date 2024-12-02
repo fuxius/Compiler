@@ -56,4 +56,17 @@ public class BranchAsm extends AsmInstruction {
     public Register getRt() {
         return rt;
     }
+
+    // toString
+    @Override
+    public String toString() {
+        if (op == BranchOp.beq || op == BranchOp.bne) {
+            // 如果有立即数
+            if (imm != 0) {
+                return op + "\t"  + rs + ", " + imm + ", " + label;
+            }else return op + "\t" + rs + ", " + rt + ", " + label;
+        } else {
+            return op + "\t" + rs + ", " + imm + ", " + label;
+        }
+    }
 }
