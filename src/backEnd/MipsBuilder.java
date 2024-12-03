@@ -223,18 +223,11 @@ public class MipsBuilder {
         }
     }
 
-    private Register loadImmediate(int value, Register defaultRegister) {
-        if (immCache.containsKey(value)) {
-            return immCache.get(value);
-        }
-        text.add(new Li(defaultRegister, value));
-        immCache.put(value, defaultRegister);
-        return defaultRegister;
-    }
 
     private Register loadOperand(Value operand, Register defaultRegister) {
         if (operand instanceof Constant) {
-            return loadImmediate(((Constant) operand).getValue(), defaultRegister);
+            text.add(new Li(defaultRegister, ((Constant) operand).getValue()));
+            return defaultRegister;
         } else if (registerPool.containsKey(operand)) {
             return getRegister(operand);
         } else {
@@ -252,15 +245,11 @@ public class MipsBuilder {
         // 确定目标寄存器
         Register rd = getRegister(alu) != null ? getRegister(alu) : Register.getRegister(Register.K0.ordinal());
 
-        // 加载操作数
-        Register rs = loadOperand(op1, Register.getRegister(Register.K0.ordinal()));
-        Register rt = loadOperand(op2, Register.getRegister(Register.K1.ordinal()));
-
         // 分支处理
         switch (determineOperandType(op1, op2)) {
-            case "TWO_CONSTANTS" -> handleTwoConstants(op, rd, rs, rt, (Constant) op1, (Constant) op2);
-            case "ONE_CONSTANT" -> handleOneConstant(op, rd, rs, rt, op1, op2);
-            case "NO_CONSTANTS" -> handleNoConstants(op, rd, rs, rt);
+            case "TWO_CONSTANTS" -> handleTwoConstants(op, rd, (Constant) op1, (Constant) op2);
+            case "ONE_CONSTANT" -> handleOneConstant(op, rd, op1, op2);
+            case "NO_CONSTANTS" -> handleNoConstants(op, rd, op1, op2);
         }
 
         // 如果目标寄存器是 Register.K0，则将结果存回内存
@@ -277,9 +266,9 @@ public class MipsBuilder {
             return "NO_CONSTANTS";
         }
     }
-    private void handleTwoConstants(Alu.OP op, Register rd, Register rs, Register rt, Constant c1, Constant c2) {
-        text.add(new Li(rs, c1.getValue()));
-        text.add(new Li(rt, c2.getValue()));
+    private void handleTwoConstants(Alu.OP op, Register rd, Constant c1, Constant c2) {
+        Register rs = loadOperand(c1, Register.getRegister(Register.K0.ordinal()));
+        Register rt = loadOperand(c2, Register.getRegister(Register.K1.ordinal()));
 
         if (op == Alu.OP.ADD) {
             text.add(new AluAsm(AluAsm.AluOp.addu, rd, rs, rt));
@@ -295,28 +284,67 @@ public class MipsBuilder {
             text.add(new MoveFrom(MoveFrom.Type.MFHI, rd));
         }
     }
-    private void handleOneConstant(Alu.OP op, Register rd, Register rs, Register rt, Value op1, Value op2) {
-        Constant constant = (op1 instanceof Constant) ? (Constant) op1 : (Constant) op2;
-        Value nonConstant = (op1 instanceof Constant) ? op2 : op1;
+    private void handleOneConstant(Alu.OP op, Register rd, Value op1, Value op2) {
+        boolean isOp1Constant = op1 instanceof Constant;
+        Constant constant = isOp1Constant ? (Constant) op1 : (Constant) op2;
+        Value nonConstant = isOp1Constant ? op2 : op1;
 
-        Register constantRegister = loadOperand(constant, rt);
-        Register nonConstantRegister = loadOperand(nonConstant, rs);
+        Register constantRegister = loadOperand(constant, Register.K1);
+        Register nonConstantRegister = loadOperand(nonConstant, Register.K0);
 
-        if (op == Alu.OP.ADD || op == Alu.OP.SUB) {
-            int value = (op == Alu.OP.SUB && op1 instanceof Constant) ? -constant.getValue() : constant.getValue();
-            text.add(new AluAsm(AluAsm.AluOp.addiu, rd, nonConstantRegister, value));
-        } else if (op == Alu.OP.MUL) {
-            text.add(new AluAsm(AluAsm.AluOp.mul, rd, constantRegister, nonConstantRegister));
-        } else if (op == Alu.OP.SDIV) {
-            text.add(new AluAsm(AluAsm.AluOp.div, nonConstantRegister, constantRegister));
-            text.add(new MoveFrom(MoveFrom.Type.MFLO, rd));
-        } else if (op == Alu.OP.SREM) {
-            text.add(new AluAsm(AluAsm.AluOp.div, nonConstantRegister, constantRegister));
-            text.add(new MoveFrom(MoveFrom.Type.MFHI, rd));
+        switch(op) {
+            case ADD:
+                // rd = nonConstant + constant
+                text.add(new AluAsm(AluAsm.AluOp.addiu, rd, nonConstantRegister, constant.getValue()));
+                break;
+
+            case SUB:
+                if (isOp1Constant) {
+                    // rd = constant - nonConstant
+                    // MIPS没有直接的减法立即数指令，需要使用subu
+                    text.add(new AluAsm(AluAsm.AluOp.subu, rd, constantRegister, nonConstantRegister));
+                } else {
+                    // rd = nonConstant - constant
+                    text.add(new AluAsm(AluAsm.AluOp.addiu, rd, nonConstantRegister, -constant.getValue()));
+                }
+                break;
+
+            case MUL:
+                // rd = nonConstant * constant (顺序不影响)
+                text.add(new AluAsm(AluAsm.AluOp.mul, rd, nonConstantRegister, constantRegister));
+                break;
+
+            case SDIV:
+                if (isOp1Constant) {
+                    // rd = constant / nonConstant
+                    text.add(new AluAsm(AluAsm.AluOp.div, constantRegister, nonConstantRegister));
+                } else {
+                    // rd = nonConstant / constant
+                    text.add(new AluAsm(AluAsm.AluOp.div, nonConstantRegister, constantRegister));
+                }
+                text.add(new MoveFrom(MoveFrom.Type.MFLO, rd));
+                break;
+
+            case SREM:
+                if (isOp1Constant) {
+                    // rd = constant % nonConstant
+                    text.add(new AluAsm(AluAsm.AluOp.div, constantRegister, nonConstantRegister));
+                } else {
+                    // rd = nonConstant % constant
+                    text.add(new AluAsm(AluAsm.AluOp.div, nonConstantRegister, constantRegister));
+                }
+                text.add(new MoveFrom(MoveFrom.Type.MFHI, rd));
+                break;
+
+            default:
+                // 处理其他操作或抛出异常
+                throw new UnsupportedOperationException("Unsupported ALU operation: " + op);
         }
     }
 
-    private void handleNoConstants(Alu.OP op, Register rd, Register rs, Register rt) {
+    private void handleNoConstants(Alu.OP op, Register rd, Value op1,Value op2 ) {
+        Register rs = loadOperand(op1, Register.getRegister(Register.K0.ordinal()));
+        Register rt = loadOperand(op2, Register.getRegister(Register.K1.ordinal()));
         if (op == Alu.OP.ADD) {
             text.add(new AluAsm(AluAsm.AluOp.addu, rd, rs, rt));
         } else if (op == Alu.OP.SUB) {
@@ -690,21 +718,26 @@ public class MipsBuilder {
 
     // 生成 LOAD 指令的汇编代码
     public void buildLoad(Load load) {
-        // 获取指针值
+        // 获取指针
         Value ptr = load.getOperands().get(0);
-        // 默认使用 $k0 作为指针寄存器
-        Register ptrReg = loadOperand(ptr, Register.getRegister(Register.K0.ordinal()));
-
-        // 确定目标寄存器
-        Register rd = registerPool.containsKey(load)
-                ? getRegister(load)
-                : Register.getRegister(Register.K0.ordinal());
-
-        // 加载指针指向的值到目标寄存器
+        // 获取目标寄存器
+        Register rd = getRegister(load) == null ? Register.getRegister(Register.K0.ordinal()) : getRegister(load);
+        // 处理指针
+        Register ptrReg = Register.getRegister(Register.K0.ordinal());
+        if (ptr instanceof GlobalVar) {
+            // 如果指针是全局变量，加载其地址到 k0 寄存器
+            text.add(new La(ptrReg, ptr.getRealName()));
+        } else if (registerPool.containsKey(ptr)) {
+            // 如果指针已被分配到寄存器，直接使用该寄存器
+            ptrReg = getRegister(ptr);
+        } else {
+            // 否则，从栈中加载指针的值到 k0 寄存器
+            text.add(new Mem(Mem.MemOp.lw, getStackOffset(ptr), Register.SP, ptrReg));
+        }
+        // 生成 load 指令，将指针指向的值加载到目标寄存器中
         text.add(new Mem(Mem.MemOp.lw, 0, ptrReg, rd));
-
-        // 如果目标寄存器是临时寄存器，将值存储回栈
-        if (!registerPool.containsKey(load)) {
+        // 如果目标寄存器是 Register.K0，则将结果存回内存
+        if (rd == Register.getRegister(Register.K0.ordinal())) {
             text.add(new Mem(Mem.MemOp.sw, getStackOffset(load), Register.SP, rd));
         }
     }
@@ -714,13 +747,36 @@ public class MipsBuilder {
         // 获取指针和值
         Value ptr = store.getTo();
         Value val = store.getFrom();
-
-        // 加载指针到寄存器
-        Register ptrReg = loadOperand(ptr, Register.getRegister(Register.K0.ordinal()));
-
-        // 加载值到寄存器
-        Register valReg = loadOperand(val, Register.getRegister(Register.K1.ordinal()));
-
+        // 处理指针
+        Register ptrReg = Register.getRegister(Register.K0.ordinal());
+        if (ptr instanceof GlobalVar) {
+            // 如果指针是全局变量，加载其地址到 k0 寄存器
+            text.add(new La(ptrReg, ptr.getRealName()));
+        } else if (registerPool.containsKey(ptr)) {
+            // 如果指针已被分配到寄存器，直接使用该寄存器
+            ptrReg = getRegister(ptr);
+        } else {
+            // 否则，从栈中加载指针的值到 k0 寄存器
+            text.add(new Mem(Mem.MemOp.lw, getStackOffset(ptr), Register.SP, ptrReg));
+        }
+        // 处理值
+        Register valReg = Register.getRegister(Register.K1.ordinal());
+        if (val instanceof Constant || val instanceof Undef) {
+            // 如果值是常量，使用 li 指令加载立即数
+            text.add(new Li(valReg, ((Constant) val).getValue()));
+        } else if (registerPool.containsKey(val)) {
+            // 如果值已被分配到寄存器，直接使用该寄存器
+            valReg = getRegister(val);
+        } else {
+            // 否则，从栈中加载值到 k1 寄存器
+            Integer valOffset = getStackOffset(val);
+            if (valOffset == null) {
+                decreaseStackOffset(4);
+                valOffset = getCurrentStackOffset();
+                stackOffset.put(val, valOffset);
+            }
+            text.add(new Mem(Mem.MemOp.lw, getStackOffset(val), Register.SP, valReg));
+        }
         // 生成 store 指令，将值存储到指针指向的位置
         text.add(new Mem(Mem.MemOp.sw, 0, ptrReg, valReg));
     }
@@ -761,13 +817,12 @@ public class MipsBuilder {
             return;
         }
         // 处理返回值
-        Register valReg = Register.getRegister(Register.K0.ordinal());
         if (val instanceof Constant) {
             // 如果返回值是常量，使用 li 指令加载立即数
-            text.add(new Li(valReg, ((Constant) val).getValue()));
+            text.add(new Li(Register.V0, ((Constant) val).getValue()));
         } else if (registerPool.containsKey(val)) {
             // 如果返回值已被分配到寄存器，直接使用该寄存器
-            valReg = getRegister(val);
+            Register valReg = getRegister(val);
             text.add(new AluAsm(AluAsm.AluOp.addiu, Register.V0, valReg, 0));
         } else {
             // 否则，从栈中加载返回值到 k0 寄存器
