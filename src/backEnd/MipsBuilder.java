@@ -90,6 +90,11 @@ public class MipsBuilder {
 
     //获取某个 Value 对象对应的栈偏移量
     public Integer getStackOffset(Value value) {
+        if (stackOffset.get(value) == null) {
+            decreaseStackOffset(4);
+            int valOffset = getCurrentStackOffset();
+            stackOffset.put(value, valOffset);
+        }
         return stackOffset.get(value);
     }
 
@@ -208,7 +213,6 @@ public class MipsBuilder {
             case LOAD -> buildLoad((Load) instruction);
             case RETURN -> buildRet((Ret) instruction);
             case STORE -> buildStore((Store) instruction);
-            case ZEXT -> buildZext((Zext) instruction);
             case TRUNC -> buildTrunc((Trunc) instruction);
             case GETINT -> buildGetInt((Getint) instruction);
             case PUTSTR -> buildPutStr((Putstr) instruction);
@@ -473,405 +477,234 @@ public class MipsBuilder {
         };
     }
 
-//    // 生成 CALL 指令的汇编代码
-//    public void buildCall(Call call) {
-//        // 获取调用的函数
-//        Function function = (Function) call.getOperands().get(0);
-//        List<Value> params = call.getOperands().subList(1, call.getOperands().size());
-//
-//        // 1. 保存当前寄存器状态
-//        List<Register> savedRegisters = saveRegisters();
-//
-//        // 2. 处理参数
-//        handleCallParameters(params);
-//
-//        // 3. 调用函数
-//        text.add(new JumpAsm(JumpAsm.JumpOp.jal, function.getRealName()));
-//
-//        // 4. 恢复寄存器状态
-//        restoreRegisters(savedRegisters);
-//
-//        // 5. 处理返回值
-//        handleReturnValue(call, function.getReturnType());
-//    }
-//
-//    private List<Register> saveRegisters() {
-//        List<Register> savedRegisters = getRegisters(); // 获取已分配的寄存器
-//        for (Register reg : savedRegisters) {
-//            int offset = allocateStackSlot();
-//            text.add(new Mem(Mem.MemOp.sw, offset, Register.SP, reg));
-//        }
-//        // 保存返回地址（$ra）
-//        int raOffset = allocateStackSlot();
-//        text.add(new Mem(Mem.MemOp.sw, raOffset, Register.SP, Register.RA));
-//        return savedRegisters;
-//    }
-//    private void handleCallParameters(List<Value> params) {
-//        for (int i = 0; i < params.size(); i++) {
-//            Value param = params.get(i);
-//            if (i < 4) {
-//                // 前四个参数放在 $a0-$a3
-//                Register paramReg = Register.getRegister(Register.A0.ordinal() + i);
-//                text.add(loadValueIntoRegister(param, paramReg));
-//            } else {
-//                // 超过四个参数放在栈上
-//                int paramOffset = allocateStackSlot();
-//                Register tempReg = Register.getRegister(Register.K0.ordinal()); // 临时寄存器
-//                text.add(loadValueIntoRegister(param, tempReg));
-//                text.add(new Mem(Mem.MemOp.sw, paramOffset, Register.SP, tempReg));
-//            }
-//        }
-//    }
-//
-//    private AsmInstruction loadValueIntoRegister(Value value, Register targetRegister) {
-//        if (value instanceof Constant) {
-//            return new Li(targetRegister, ((Constant) value).getValue());
-//        } else if (registerPool.containsKey(value)) {
-//            return new MoveAsm(targetRegister, getRegister(value));
-//        } else {
-//            int offset = getStackOffset(value);
-//            return new Mem(Mem.MemOp.lw, offset, Register.SP, targetRegister);
-//        }
-//    }
-//
-//    private void restoreRegisters(List<Register> savedRegisters) {
-//        for (int i = savedRegisters.size() - 1; i >= 0; i--) {
-//            Register reg = savedRegisters.get(i);
-//            int offset = deallocateStackSlot();
-//            text.add(new Mem(Mem.MemOp.lw, offset, Register.SP, reg));
-//        }
-//        // 恢复返回地址（$ra）
-//        int raOffset = deallocateStackSlot();
-//        text.add(new Mem(Mem.MemOp.lw, raOffset, Register.SP, Register.RA));
-//    }
-//
-//    private void handleReturnValue(Call call, LLVMType returnType) {
-//        if (returnType.isVoid()) {
-//            return; // 无返回值
-//        }
-//        Register destReg = getRegister(call);
-//        if (destReg != null) {
-//            // 返回值放入目标寄存器
-//            text.add(new AluAsm(AluAsm.AluOp.addiu, destReg, Register.V0, 0));
-//        } else {
-//            // 返回值存储到栈中
-//            int retOffset = getStackOffset(call);
-//            text.add(new Mem(Mem.MemOp.sw, retOffset, Register.SP, Register.V0));
-//        }
-//    }
-//
-//    private int allocateStackSlot() {
-//        decreaseStackOffset(4); // 每次分配 4 字节
-//        return getCurrentStackOffset();
-//    }
-//
-//    private int deallocateStackSlot() {
-//        int offset = getCurrentStackOffset();
-//        increaseStackOffset(4); // 每次释放 4 字节
-//        return offset;
-//    }
-
-    // 生成 CALL 指令的汇编代码
     public void buildCall(Call call) {
         // 获取调用的函数
         Function function = (Function) call.getOperands().get(0);
-        // 获取参数列表
         List<Value> params = call.getOperands().subList(1, call.getOperands().size());
 
-        // 1. 寄存器分配
-        // 获取寄存器池中的所有寄存器 Hashset
-        ArrayList<Register> registers = getRegisters();
+        // 1. 保存所有活跃的寄存器和返回地址
+        List<Register> activeRegs = getRegisters();
 
-        // 2. 初始化保存和恢复指令列表
-        ArrayList<Mem> loadAsms = new ArrayList<>();   // 加载指令列表
-        ArrayList<Mem> storeAsms = new ArrayList<>();  // 存储指令列表
+        List<Mem> saveInstructions = saveRegistersToStack(activeRegs);
 
-        // 3. 确保特定的参数寄存器（a1, a2, a3）被保存
-        for (int i = 0; i < 3; i++) {
-            Register paramReg = Register.getRegister(Register.A0.ordinal() + i + 1);
-            if (!registers.contains(paramReg)) {
-                registers.add(paramReg);
-            }
+        // 保存返回地址 ($ra)
+        int raOffset = allocateStaticStackOffset(activeRegs.size());
+        text.add(new Mem(Mem.MemOp.sw, raOffset, Register.SP, Register.RA));
+
+        // 2. 处理参数传递
+        handleCallParameters(params, activeRegs);
+        // 为参数分配栈空间
+        text.add(new AluAsm(AluAsm.AluOp.addiu, Register.SP, Register.SP, allocateStaticStackOffset(activeRegs.size())));
+        // 3. 调用函数
+        text.add(new JumpAsm(JumpAsm.JumpOp.jal, function.getRealName()));
+        // 4. 恢复返回地址
+        text.add(new Mem(Mem.MemOp.lw, 0, Register.SP, Register.RA));
+        // 释放参数栈空间
+        text.add(new AluAsm(AluAsm.AluOp.addiu, Register.SP, Register.SP, -allocateStaticStackOffset(activeRegs.size())));
+        // 5. 恢复保存的寄存器
+        restoreRegistersFromStack(activeRegs);
+
+        // 6. 处理返回值
+        handleReturnValue(call, function.getReturnType());
+    }
+    private List<Mem> saveRegistersToStack(List<Register> activeRegs) {
+        List<Mem> instructions = new ArrayList<>();
+        for (int i = 0; i < activeRegs.size(); i++) {
+            int offset = allocateStaticStackOffset(i);
+            Mem saveInstr = new Mem(Mem.MemOp.sw, offset, Register.SP, activeRegs.get(i));
+            text.add(saveInstr);
+            instructions.add(saveInstr);
         }
-
-        // 4. 为保存的寄存器生成存储指令
-        for (int i = 0; i < registers.size(); i++) {
-            Register reg = registers.get(i);
-            // 计算寄存器在栈中的存储位置
-            int offset = getCurrentStackOffset() - (i + 1) * 4;
-            // 生成 store word (sw) 指令，将寄存器的值存储到栈中
-            Mem storeAsm = new Mem(Mem.MemOp.sw, offset, Register.SP, reg);
-            text.add(storeAsm);
-            storeAsms.add(storeAsm);
+        return instructions;
+    }
+    private void restoreRegistersFromStack(List<Register> activeRegs) {
+        for (int i = 0; i < activeRegs.size(); i++) {
+            int offset = allocateStaticStackOffset(i);
+            text.add(new Mem(Mem.MemOp.lw, offset, Register.SP, activeRegs.get(i)));
         }
-        // 保存返回地址（ra）到栈中
-        int raOffset = getCurrentStackOffset() - (registers.size() + 1) * 4;
-        Mem storeAsm = new Mem(Mem.MemOp.sw, raOffset, Register.SP, Register.RA);
-        text.add(storeAsm);
-        storeAsms.add(storeAsm);
-
-        // 5. 将参数存入寄存器或栈
+    }
+    private void handleCallParameters(List<Value> params, List<Register> activeRegs) {
         for (int i = 0; i < params.size(); i++) {
             Value param = params.get(i);
             if (i < 3) {
-                // 前三个参数通过寄存器 a1, a2, a3 传递
+                // 前 3 个参数加载到 $a1, $a2, $a3
                 Register paramReg = Register.getRegister(Register.A0.ordinal() + i + 1);
                 if (param instanceof Constant) {
-                    // 如果参数是常量，使用 li 指令加载立即数
                     text.add(new Li(paramReg, ((Constant) param).getValue()));
                 } else if (registerPool.containsKey(param)) {
-                    Register sourceReg = registerPool.get(param);
                     if (param instanceof Param) {
-                        // 如果参数是 Param 类型，从栈中加载到参数寄存器
-                        int paramOffset = getStackOffset(param);
-                        // 如果参数在栈中的偏移量为 0，说明参数在栈中的位置未分配
-                        if (paramOffset == 0) {
-                            paramOffset = getCurrentStackOffset()  - (registers.indexOf(sourceReg) + 1) * 4;
-                        }
+                        // 从栈中加载到参数寄存器
+                        int paramOffset = allocateStaticStackOffset(activeRegs.indexOf(registerPool.get(param)));
                         text.add(new Mem(Mem.MemOp.lw, paramOffset, Register.SP, paramReg));
                     } else {
-                        // 否则，移动寄存器的值到参数寄存器
-                        text.add(new MoveAsm(paramReg, sourceReg));
+                        // 从源寄存器移动到参数寄存器
+                        text.add(new MoveAsm(paramReg, getRegister(param)));
                     }
                 } else {
-                    // 如果参数不在寄存器中，从栈中加载到参数寄存器
+                    // 从栈中加载到参数寄存器
                     int paramOffset = getStackOffset(param);
                     text.add(new Mem(Mem.MemOp.lw, paramOffset, Register.SP, paramReg));
                 }
             } else {
-                // 超过三个参数，通过栈传递
-                Register tempReg = Register.getRegister(Register.K0.ordinal()); // 临时寄存器
+                // 超出 3 个的参数通过栈传递
+                Register tempReg = Register.getRegister(Register.K0.ordinal());
                 if (param instanceof Constant) {
-                    // 如果参数是常量，使用 li 指令加载立即数到临时寄存器
+                    // 如果参数是常量，直接加载到临时寄存器
                     text.add(new Li(tempReg, ((Constant) param).getValue()));
                 } else if (registerPool.containsKey(param)) {
-                    Register sourceReg = registerPool.get(param);
                     if (param instanceof Param) {
-                        // 如果参数是 Param 类型，从栈中加载到临时寄存器
-                        int paramOffset = getStackOffset(param);
-                        // 如果参数在栈中的偏移量为 0，说明参数在栈中的位置未分配
-                        if (paramOffset == 0) {
-                            paramOffset = getCurrentStackOffset()  - (registers.indexOf(sourceReg) + 1) * 4;
-                        }
+                        // 从栈中加载到参数寄存器
+                        int paramOffset = allocateStaticStackOffset(activeRegs.indexOf(registerPool.get(param)));
                         text.add(new Mem(Mem.MemOp.lw, paramOffset, Register.SP, tempReg));
                     } else {
-                        // 否则，将源寄存器的值复制到临时寄存器
-                        text.add(new MoveAsm(tempReg, sourceReg));
+                        tempReg = getRegister(param);
                     }
                 } else {
-                    // 如果参数不在寄存器中，从栈中加载到临时寄存器
+                    // 如果参数不在寄存器池中，从栈中加载到临时寄存器
                     int paramOffset = getStackOffset(param);
                     text.add(new Mem(Mem.MemOp.lw, paramOffset, Register.SP, tempReg));
                 }
-                // 将参数存储到栈中的相应位置
-                int stackOffset = getCurrentStackOffset() - (registers.size() + 2 + i) * 4;
+                // 将临时寄存器中的值存储到栈中
+                int stackOffset = allocateStaticStackOffset(activeRegs.size() + i + 1);
+                //activeRegs.size()：保存的活跃寄存器数量。
+                //i：当前参数的索引（从 0 开始）。
+                //+1：补偿保存的返回地址所占的一个栈位置。
                 text.add(new Mem(Mem.MemOp.sw, stackOffset, Register.SP, tempReg));
             }
         }
+    }
 
-        // 6. 调整栈指针，为保存的寄存器和返回地址分配空间
-        int totalStackOffset = 4 * registers.size() + 4 - getCurrentStackOffset(); // 计算总的栈偏移量
-        text.add(new AluAsm(AluAsm.AluOp.addiu, Register.SP, Register.SP, -totalStackOffset));
-
-        // 7. 生成跳转并链接（jal）指令调用函数
-        JumpAsm jal =  new JumpAsm(JumpAsm.JumpOp.jal, function.getRealName());
-        text.add(jal);
-        // 8. 恢复返回地址（ra）从栈中
-        text.add(new Mem(Mem.MemOp.lw, raOffset, Register.SP, Register.RA));
-
-        // 9. 调整栈指针，释放分配的空间
-        text.add(new AluAsm(AluAsm.AluOp.addiu, Register.SP, Register.SP, totalStackOffset));
-
-        // 10. 恢复保存的寄存器
-        for (int i = 0; i < registers.size(); i++) {
-            Register reg = registers.get(i);
-            int offset = getCurrentStackOffset() - (i + 1) * 4;
-            // 生成 load word (lw) 指令，将栈中的值加载到寄存器
-            Mem loadAsm = new Mem(Mem.MemOp.lw, offset, Register.SP, reg);
-            text.add(loadAsm);
-            loadAsms.add(loadAsm);
+    private void handleReturnValue(Call call, LLVMType returnType) {
+        if (returnType.isVoid()) {
+            return; // 无返回值，不处理
         }
-        // 设置 jal 指令的加载和存储指令列表
-        jal.setLoadAsms(loadAsms);
-        jal.setStoreAsms(storeAsms);
-        // 11. 处理函数返回值
-        if (function.getReturnType() != LLVMType.Void) {
-            Register destReg = registerPool.get(call); // 获取存储返回值的目标寄存器
-            if (destReg != null) {
-                // 如果目标寄存器存在，将返回值从 v0 移动到目标寄存器
-                text.add(new AluAsm(AluAsm.AluOp.addiu, destReg, Register.V0, 0));
-            } else {
-                // 否则，将返回值存储到栈中的相应位置
-                int retOffset = getStackOffset(call);
-                text.add(new Mem(Mem.MemOp.sw, retOffset, Register.SP, Register.V0));
-            }
+        Register destReg = getRegister(call);
+        if (destReg != null) {
+            // 将返回值从 $v0 移动到目标寄存器
+            text.add(new AluAsm(AluAsm.AluOp.addiu, destReg, Register.V0, 0));
+        } else {
+            // 将返回值存储到栈中
+            int retOffset = getStackOffset(call);
+            text.add(new Mem(Mem.MemOp.sw, retOffset, Register.SP, Register.V0));
         }
     }
-    // 生成 GETPTR 指令的汇编代码
+    private int allocateStaticStackOffset(int index) {
+        return currentStackOffset - (index + 1) * 4; // 每次分配 4 字节，静态偏移
+    }
+
     public void buildGetPtr(GetPtr getPtr) {
-        // 获取指针的基地址
+        // 获取基地址和偏移量
         Value base = getPtr.getOperands().get(0);
-        // 获取指针的偏移量
         Value offset = getPtr.getOperands().get(1);
+
         // 获取目标寄存器
-        Register rd = Register.getRegister(Register.K0.ordinal());
-        // 处理基地址
-        Register baseReg = Register.getRegister(Register.K0.ordinal());
-        if (base instanceof GlobalVar) {
-            // 如果基地址是全局变量，加载其地址到 k0 寄存器
-            text.add(new La(baseReg, base.getRealName()));
-        } else if (registerPool.containsKey(base)) {
-            // 如果基地址已被分配到寄存器，直接使用该寄存器
-            baseReg = getRegister(base);
+        Register rd = registerPool.containsKey(getPtr)
+                ? getRegister(getPtr)
+                : Register.getRegister(Register.K1.ordinal());
+
+        // 加载基地址
+        Register baseReg = loadOperand(base, Register.getRegister(Register.K0.ordinal()));
+
+        // 加载偏移量
+        Register offsetReg;
+        int constantOffset = 0;
+        boolean isConstant = offset instanceof Constant;
+        if (isConstant) {
+            // 如果是常量偏移量
+            constantOffset = ((Constant) offset).getValue() * 4;
+            offsetReg = null; // 无需使用 offsetReg
         } else {
-            // 否则，从栈中加载基地址的值到 k0 寄存器
-            text.add(new Mem(Mem.MemOp.lw, getStackOffset(base), Register.SP, baseReg));
-        }
-        // 处理偏移量
-        Register offsetReg = Register.getRegister(Register.K1.ordinal());
-        if (offset instanceof Constant) {
-            // 常量偏移量
-            int value = ((Constant) offset).getValue() * 4;
-            //结果存储在寄存器中：
-            if (registerPool.containsKey(getPtr)) {
-                //如果目标寄存器已被分配到寄存器，直接使用该寄存器
-                rd = getRegister(getPtr);
-                //使用加立即数指令将基地址寄存器与偏移量乘以元素大小相加，结果存储到目标寄存器中。
-                text.add(new AluAsm(AluAsm.AluOp.addiu, rd, baseReg, value));
-            } else {
-                //使用加立即数指令将基地址寄存器与偏移量乘以元素大小相加，结果存储到临时结果寄存器中。
-                text.add(new AluAsm(AluAsm.AluOp.addiu, offsetReg, baseReg, value));
-                //使用存储字指令将临时结果寄存器的值存储到栈中指定的位置。
-                text.add(new Mem(Mem.MemOp.sw, getStackOffset(getPtr), Register.SP, offsetReg));
-            }
-        } else {
-            // 变量偏移量
-            if (registerPool.containsKey(offset)) {
-                // 如果偏移量已被分配到寄存器，直接使用该寄存器
-                offsetReg = getRegister(offset);
-            } else {
-                // 否则，从栈中加载偏移量的值
-                text.add(new Mem(Mem.MemOp.lw, getStackOffset(offset), Register.SP, offsetReg));
-            }
-            // 将偏移量左移2位（相当于乘以4），然后将基地址与偏移量相加
+            // 如果是变量偏移量
+            offsetReg = loadOperand(offset, Register.getRegister(Register.K1.ordinal()));
+            // 左移 2 位（乘以 4）
             text.add(new AluAsm(AluAsm.AluOp.sll, offsetReg, offsetReg, 2));
-            if (registerPool.containsKey(getPtr)) {
-                // 如果目标寄存器已被分配到寄存器，直接使用该寄存器
-                rd = getRegister(getPtr);
-                //使用无符号加法指令将基地址寄存器与中间寄存器中的偏移量相加，结果存储到目标寄存器中。
-                text.add(new AluAsm(AluAsm.AluOp.addu, rd, baseReg, offsetReg));
-            } else {
-                //使用无符号加法指令将基地址寄存器与中间寄存器中的偏移量相加，结果存储到临时结果寄存器中。
-                text.add(new AluAsm(AluAsm.AluOp.addu, offsetReg, baseReg, offsetReg));
-                //使用存储字指令将临时结果寄存器的值存储到栈中指定的位置。
-                text.add(new Mem(Mem.MemOp.sw, getStackOffset(getPtr), Register.SP, offsetReg));
-            }
+        }
+
+        // 计算最终地址
+        if (isConstant) {
+            // 常量偏移量，直接使用 addiu 指令
+            text.add(new AluAsm(AluAsm.AluOp.addiu, rd, baseReg, constantOffset));
+        } else {
+            // 变量偏移量，使用 addu 指令
+            text.add(new AluAsm(AluAsm.AluOp.addu, rd, baseReg, offsetReg));
+        }
+
+        // 如果目标寄存器是临时寄存器，则将结果存储到栈中
+        if (!registerPool.containsKey(getPtr)) {
+            text.add(new Mem(Mem.MemOp.sw, getStackOffset(getPtr), Register.SP, rd));
         }
     }
+
 
     // 生成 ICMP 指令的汇编代码
     public void buildIcmp(Icmp icmp) {
+        // 如果是控制流相关的 icmp 指令，直接返回
         if (icmp.isControlFlow()) {
             return;
         }
+
         // 获取操作数和操作符
         Value op1 = icmp.getOperands().get(0);
         Value op2 = icmp.getOperands().get(1);
         Icmp.OP op = icmp.getOp();
-        // 确定常量操作数的数量
-        int constNum = 0;
-        if (op1 instanceof Constant) {
-            constNum++;
-        }
-        if (op2 instanceof Constant) {
-            constNum++;
-        }
         // 确定目标寄存器
-        Register rd = getRegister(icmp) == null ? Register.getRegister(Register.K0.ordinal()) : getRegister(icmp);
-        // 初始化用于存储操作数的寄存器
-        Register rs = Register.getRegister(Register.K0.ordinal());
-        Register rt = Register.getRegister(Register.K1.ordinal());
+        Register rd = registerPool.containsKey(icmp)
+                ? getRegister(icmp)
+                : Register.getRegister(Register.K0.ordinal());
+
         // 将 LLVM 的比较操作映射到汇编层面的比较操作
-        CmpAsm.CmpOp cmpOp = null;
-        switch (op) {
-            case EQ:
-                cmpOp = CmpAsm.CmpOp.seq;
-                break;
-            case NE:
-                cmpOp = CmpAsm.CmpOp.sne;
-                break;
-            case SLT:
-                cmpOp = CmpAsm.CmpOp.slt;
-                break;
-            case SLE:
-                cmpOp = CmpAsm.CmpOp.sle;
-                break;
-            case SGT:
-                cmpOp = CmpAsm.CmpOp.sgt;
-                break;
-            case SGE:
-                cmpOp = CmpAsm.CmpOp.sge;
-                break;
-            default:
-                break;
-        }
-        // 处理第一个操作数
-        if (op1 instanceof Constant) {
-            // 如果第一个操作数是常量，使用 li 指令加载立即数
-            text.add(new Li(rs, ((Constant) op1).getValue()));
-        } else if (registerPool.containsKey(op1)) {
-            // 如果第一个操作数已被分配到寄存器，直接使用该寄存器
-            rs = getRegister(op1);
-        } else {
-            // 否则，从栈中加载第一个操作数的值到 rs 寄存器
-            text.add(new Mem(Mem.MemOp.lw, getStackOffset(op1), Register.SP, rs));
-        }
-        // 处理第二个操作数
-        if (op2 instanceof Constant) {
-            // 如果第二个操作数是常量，使用 li 指令加载立即数
-            text.add(new Li(rt, ((Constant) op2).getValue()));
-        } else if (registerPool.containsKey(op2)) {
-            // 如果第二个操作数已被分配到寄存器，直接使用该寄存器
-            rt = getRegister(op2);
-        } else {
-            // 否则，从栈中加载第二个操作数的值到 rt 寄存器
-            text.add(new Mem(Mem.MemOp.lw, getStackOffset(op2), Register.SP, rt));
-        }
+        CmpAsm.CmpOp cmpOp = mapIcmpOpToCmpAsmOp(op);
+
+        // 加载操作数到寄存器
+        Register rs = loadOperand(op1, Register.getRegister(Register.K0.ordinal()));
+        Register rt = loadOperand(op2, Register.getRegister(Register.K1.ordinal()));
+
         // 生成比较指令
-        // 如果 icmp 指令的结果已被分配到某个寄存器，生成比较指令并将结果存储到目标寄存器中
-        if (registerPool.containsKey(icmp)) {
-            text.add(new CmpAsm(cmpOp, rs, rt, getRegister(icmp)));
-        } else {
-            // 否则，生成比较指令将结果存储到临时寄存器（k0）中
-            text.add(new CmpAsm(cmpOp, rs, rt, Register.K0));
-            // 然后，将临时寄存器的值存储到栈中对应的位置
+        text.add(new CmpAsm(cmpOp, rs, rt, rd));
+
+        // 如果目标寄存器是临时寄存器，则将结果存储到栈中
+        if (!registerPool.containsKey(icmp)) {
             text.add(new Mem(Mem.MemOp.sw, getStackOffset(icmp), Register.SP, rd));
         }
     }
 
+    // 将 LLVM 的 Icmp 操作符映射到汇编的比较操作符
+    private CmpAsm.CmpOp mapIcmpOpToCmpAsmOp(Icmp.OP op) {
+        switch (op) {
+            case EQ:
+                return CmpAsm.CmpOp.seq;
+            case NE:
+                return CmpAsm.CmpOp.sne;
+            case SLT:
+                return CmpAsm.CmpOp.slt;
+            case SLE:
+                return CmpAsm.CmpOp.sle;
+            case SGT:
+                return CmpAsm.CmpOp.sgt;
+            case SGE:
+                return CmpAsm.CmpOp.sge;
+            default:
+                throw new IllegalArgumentException("Unsupported Icmp operation: " + op);
+        }
+    }
 
     // 生成 LOAD 指令的汇编代码
     public void buildLoad(Load load) {
-        // 获取指针
+        // 获取指针值
         Value ptr = load.getOperands().get(0);
-        // 获取目标寄存器
-        Register rd = getRegister(load) == null ? Register.getRegister(Register.K0.ordinal()) : getRegister(load);
-        // 处理指针
-        Register ptrReg = Register.getRegister(Register.K0.ordinal());
-        if (ptr instanceof GlobalVar) {
-            // 如果指针是全局变量，加载其地址到 k0 寄存器
-            text.add(new La(ptrReg, ptr.getRealName()));
-        } else if (registerPool.containsKey(ptr)) {
-            // 如果指针已被分配到寄存器，直接使用该寄存器
-            ptrReg = getRegister(ptr);
-        } else {
-            // 否则，从栈中加载指针的值到 k0 寄存器
-            text.add(new Mem(Mem.MemOp.lw, getStackOffset(ptr), Register.SP, ptrReg));
-        }
-        // 生成 load 指令，将指针指向的值加载到目标寄存器中
+        // 默认使用 $k0 作为指针寄存器
+        Register ptrReg = loadOperand(ptr, Register.getRegister(Register.K0.ordinal()));
+
+        // 确定目标寄存器
+        Register rd = registerPool.containsKey(load)
+                ? getRegister(load)
+                : Register.getRegister(Register.K0.ordinal());
+
+        // 加载指针指向的值到目标寄存器
         text.add(new Mem(Mem.MemOp.lw, 0, ptrReg, rd));
-        // 如果目标寄存器是 Register.K0，则将结果存回内存
-        if (rd == Register.getRegister(Register.K0.ordinal())) {
+
+        // 如果目标寄存器是临时寄存器，将值存储回栈
+        if (!registerPool.containsKey(load)) {
             text.add(new Mem(Mem.MemOp.sw, getStackOffset(load), Register.SP, rd));
         }
     }
@@ -881,36 +714,13 @@ public class MipsBuilder {
         // 获取指针和值
         Value ptr = store.getTo();
         Value val = store.getFrom();
-        // 处理指针
-        Register ptrReg = Register.getRegister(Register.K0.ordinal());
-        if (ptr instanceof GlobalVar) {
-            // 如果指针是全局变量，加载其地址到 k0 寄存器
-            text.add(new La(ptrReg, ptr.getRealName()));
-        } else if (registerPool.containsKey(ptr)) {
-            // 如果指针已被分配到寄存器，直接使用该寄存器
-            ptrReg = getRegister(ptr);
-        } else {
-            // 否则，从栈中加载指针的值到 k0 寄存器
-            text.add(new Mem(Mem.MemOp.lw, getStackOffset(ptr), Register.SP, ptrReg));
-        }
-        // 处理值
-        Register valReg = Register.getRegister(Register.K1.ordinal());
-        if (val instanceof Constant || val instanceof Undef) {
-            // 如果值是常量，使用 li 指令加载立即数
-            text.add(new Li(valReg, ((Constant) val).getValue()));
-        } else if (registerPool.containsKey(val)) {
-            // 如果值已被分配到寄存器，直接使用该寄存器
-            valReg = getRegister(val);
-        } else {
-            // 否则，从栈中加载值到 k1 寄存器
-            Integer valOffset = getStackOffset(val);
-            if (valOffset == null) {
-                decreaseStackOffset(4);
-                valOffset = getCurrentStackOffset();
-                stackOffset.put(val, valOffset);
-            }
-            text.add(new Mem(Mem.MemOp.lw, getStackOffset(val), Register.SP, valReg));
-        }
+
+        // 加载指针到寄存器
+        Register ptrReg = loadOperand(ptr, Register.getRegister(Register.K0.ordinal()));
+
+        // 加载值到寄存器
+        Register valReg = loadOperand(val, Register.getRegister(Register.K1.ordinal()));
+
         // 生成 store 指令，将值存储到指针指向的位置
         text.add(new Mem(Mem.MemOp.sw, 0, ptrReg, valReg));
     }
@@ -919,46 +729,21 @@ public class MipsBuilder {
     public void buildTrunc(Trunc trunc) {
         // 获取源值和目标寄存器
         Value src = trunc.getOperands().get(0);
-        Register rd = getRegister(trunc) == null ? Register.getRegister(Register.K0.ordinal()) : getRegister(trunc);
-        // 处理源值
-        Register srcReg = Register.getRegister(Register.K0.ordinal());
-        if (src instanceof Constant) {
-            // 如果源值是常量，使用 li 指令加载立即数
-            text.add(new Li(srcReg, ((Constant) src).getValue()));
-        } else if (registerPool.containsKey(src)) {
-            // 如果源值已被分配到寄存器，直接使用该寄存器
-            srcReg = getRegister(src);
-        } else {
-            // 否则，从栈中加载源值到 k0 寄存器
-            text.add(new Mem(Mem.MemOp.lw, getStackOffset(src), Register.SP, srcReg));
-        }
-        if(registerPool.containsKey(trunc)) {
-            text.add(new AluAsm(AluAsm.AluOp.andi, rd, srcReg, 0xFF));
-        } else {
-            // 将结果存储到栈中
+        Register rd = registerPool.containsKey(trunc)
+                ? getRegister(trunc)
+                : Register.getRegister(Register.K0.ordinal());
+
+        // 加载源值到寄存器
+        Register srcReg = loadOperand(src, Register.getRegister(Register.K0.ordinal()));
+
+        // 生成 ANDI 指令，截断到低8位
+        text.add(new AluAsm(AluAsm.AluOp.andi, rd, srcReg, 0xFF));
+
+        // 如果目标寄存器是临时寄存器，则将结果存储到栈中
+        if (!registerPool.containsKey(trunc)) {
             text.add(new Mem(Mem.MemOp.sw, getStackOffset(trunc), Register.SP, rd));
         }
     }
-
-    // 生成 ZEXT 指令的汇编代码
-    public void buildZext(Zext zext) {
-        // 获取源值和目标寄存器
-        Value src = zext.getOperands().get(0);
-        Register rd = getRegister(zext) == null ? Register.getRegister(Register.K0.ordinal()) : getRegister(zext);
-        // 处理源值
-        Register srcReg = Register.getRegister(Register.K0.ordinal());
-        if (src instanceof Constant) {
-            // 如果源值是常量，使用 li 指令加载立即数
-            text.add(new Li(srcReg, ((Constant) src).getValue()));
-        } else if (registerPool.containsKey(src)) {
-            // 如果源值已被分配到寄存器，直接使用该寄存器
-            srcReg = getRegister(src);
-        } else {
-            // 否则，从栈中加载源值到 k0 寄存器
-            text.add(new Mem(Mem.MemOp.lw, getStackOffset(src), Register.SP, srcReg));
-        }
-    }
-
 
     // 生成 RET 指令的汇编代码
     public void buildRet(Ret ret) {
@@ -998,30 +783,17 @@ public class MipsBuilder {
         text.add(new Li(Register.V0, 5));
         // 生成 syscall 指令
         text.add(new Syscall());
+        // 获取目标寄存器
+        Register rd = getOrAllocateRegister(getInt);
         // 将返回值存储到目标寄存器
-        Register rd = getRegister(getInt) == null ? Register.getRegister(Register.K0.ordinal()) : getRegister(getInt);
         text.add(new MoveAsm(rd, Register.V0));
-        // 如果目标寄存器是 Register.K0，则将结果存回内存
-        if (rd == Register.getRegister(Register.K0.ordinal())) {
-            text.add(new Mem(Mem.MemOp.sw, getStackOffset(getInt), Register.SP, rd));
-        }
+        // 如果目标寄存器不是已分配寄存器，将结果存回栈
+        storeToStackIfNeeded(getInt, rd);
     }
 
     // 生成 PutInt 指令的汇编代码
     public void buildPutInt(Putint putInt) {
-        // 获取参数
-        Value val = putInt.getOperands().get(0);
-        // 处理参数
-        if (val instanceof Constant) {
-            // 如果参数是常量，使用 li 指令加载立即数
-            text.add(new Li(Register.A0, ((Constant) val).getValue()));
-        } else if (registerPool.containsKey(val)) {
-            // 如果参数已被分配到寄存器，直接使用该寄存器
-            text.add(new AluAsm(AluAsm.AluOp.addiu, Register.A0, getRegister(val), 0));
-        } else {
-            // 否则，从栈中加载参数到 k0 寄存器
-            text.add(new Mem(Mem.MemOp.lw, getStackOffset(val), Register.SP, Register.A0));
-        }
+        handleParameter(putInt.getOperands().get(0), Register.A0);
         // 生成 li 指令加载立即数 1 到 v0 寄存器
         text.add(new Li(Register.V0, 1));
         // 生成 syscall 指令
@@ -1044,42 +816,51 @@ public class MipsBuilder {
         text.add(new Li(Register.V0, 12));
         // 生成 syscall 指令
         text.add(new Syscall());
+        // 获取目标寄存器
+        Register rd = getOrAllocateRegister(getchar);
         // 将返回值存储到目标寄存器
-        Register rd = getRegister(getchar) == null ? Register.getRegister(Register.K0.ordinal()) : getRegister(getchar);
         text.add(new MoveAsm(rd, Register.V0));
-        // 如果目标寄存器是 Register.K0，则将结果存回内存
-        if (rd == Register.getRegister(Register.K0.ordinal())) {
-            text.add(new Mem(Mem.MemOp.sw, getStackOffset(getchar), Register.SP, rd));
-        }
+        // 如果目标寄存器不是已分配寄存器，将结果存回栈
+        storeToStackIfNeeded(getchar, rd);
     }
 
     // 生成 PutCh 指令的汇编代码
     public void buildPutCh(Putch putCh) {
-        // 获取参数
-        Value val = putCh.getOperands().get(0);
-        // 处理参数
-        Register valReg = Register.getRegister(Register.K0.ordinal());
-        if (val instanceof Constant) {
-            // 如果参数是常量，使用 li 指令加载立即数
-            text.add(new Li(valReg, ((Constant) val).getValue()));
-        } else if (registerPool.containsKey(val)) {
-            // 如果参数已被分配到寄存器，直接使用该寄存器
-            valReg = getRegister(val);
-        } else {
-            // 否则，从栈中加载参数到 k0 寄存器
-            text.add(new Mem(Mem.MemOp.lw, getStackOffset(val), Register.SP, valReg));
-        }
+        handleParameter(putCh.getOperands().get(0), Register.A0);
         // 生成 li 指令加载立即数 11 到 v0 寄存器
         text.add(new Li(Register.V0, 11));
         // 生成 syscall 指令
         text.add(new Syscall());
     }
 
+    // 通用方法：处理参数
+    private void handleParameter(Value val, Register targetReg) {
+        if (val instanceof Constant) {
+            // 如果参数是常量，使用 li 指令加载立即数
+            text.add(new Li(targetReg, ((Constant) val).getValue()));
+        } else if (registerPool.containsKey(val)) {
+            // 如果参数已被分配到寄存器，直接使用该寄存器
+            text.add(new MoveAsm(targetReg, getRegister(val)));
+        } else {
+            // 否则，从栈中加载参数到目标寄存器
+            text.add(new Mem(Mem.MemOp.lw, getStackOffset(val), Register.SP, targetReg));
+        }
+    }
+
+    // 通用方法：获取或分配目标寄存器
+    private Register getOrAllocateRegister(Value value) {
+        return getRegister(value) == null ? Register.getRegister(Register.K0.ordinal()) : getRegister(value);
+    }
+
+    // 通用方法：根据需要将寄存器内容存储回栈
+    private void storeToStackIfNeeded(Value value, Register reg) {
+        if (!registerPool.containsKey(value)) {
+            text.add(new Mem(Mem.MemOp.sw, getStackOffset(value), Register.SP, reg));
+        }
+    }
+
     // 生成所有的汇编代码
     public void mipsBuilder(Module module) {
-//        // 初始化寄存器池，调用RegisterAllocator类的allocateRegisters方法
-//        RegisterAllocator allocator = new RegisterAllocator();
-//        allocator.allocateRegisters(module);
         //初始化两个 ArrayList，分别用于存储数据段和文本段的汇编指令
         data = new ArrayList<>();
         text = new ArrayList<>();

@@ -1,97 +1,358 @@
 .data
-str0: .asciiz " "
+g0: .word 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+g1: .byte 65
+str0: .asciiz "Found another max: "
 str1: .asciiz "
 "
-str2: .asciiz "Result: "
-str3: .asciiz "
+str2: .asciiz "Invalid size
+"
+str3: .asciiz "Maximum value is: "
+str4: .asciiz "
+"
+str5: .asciiz "Size out of bounds
 "
 .text
 main:
 	main_b0:
 		
 		#%t0 = alloca i32
-		addiu $s3, $sp, -4
+		addiu $s2, $sp, -4
 		
-		#%t1 = call i32 @func1(i32 1, i32 2, i32 3, i32 4)
-		sw $t7, -8($sp)
-		sw $s3, -12($sp)
-		sw $a1, -16($sp)
-		sw $a2, -20($sp)
-		sw $a3, -24($sp)
-		sw $ra, -28($sp)
-		li $a1, 1
-		li $a2, 2
-		li $a3, 3
-		li $k0, 4
-		sw $k0, -44($sp)
-		addiu $sp, $sp, -28
-		jal func1
-		lw $ra, -28($sp)
-		addiu $sp, $sp, 28
-		lw $t7, -8($sp)
-		lw $s3, -12($sp)
-		lw $a1, -16($sp)
-		lw $a2, -20($sp)
-		lw $a3, -24($sp)
-		addiu $t7, $v0, 0
+		#%t1 = call i32 @getint()
+		li $v0, 5
+		syscall
+		move $t6, $v0
 		
 		#store i32 %t1, i32* %t0
-		sw $t7, 0($s3)
+		sw $t6, 0($s2)
 		
 		#%t2 = load i32, i32* %t0
-		lw $s3, 0($s3)
+		lw $t6, 0($s2)
 		
-		#call void @putstr(i8* getelementptr inbounds ([9 x i8], [9 x i8]* @str2, i64 0, i64 0))
-		la $a0, str2
-		li $v0, 4
-		syscall
+		#%t3 = icmp sgt i32 %t2, 0
 		
-		#call void @putint(i32 %t2)
-		addiu $a0, $s3, 0
-		li $v0, 1
-		syscall
+		#br i1 %t3, label %b4, label %b3
+		bgt $t6, 0, main_b4
+		j main_b3
+	main_b1:
 		
-		#call void @putstr(i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str3, i64 0, i64 0))
-		la $a0, str3
-		li $v0, 4
-		syscall
+		#%t6 = alloca i32
+		addiu $t6, $sp, -8
+		
+		#store i32 0, i32* %t6
+		li $k1, 0
+		sw $k1, 0($t6)
+		
+		#br label %b5
+		j main_b5
+	main_b2:
 		
 		#ret i32 0
 		li $v0, 10
 		syscall
+	main_b3:
+		
+		#call void @putstr(i8* getelementptr inbounds ([20 x i8], [20 x i8]* @str5, i64 0, i64 0))
+		la $a0, str5
+		li $v0, 4
+		syscall
+		
+		#br label %b2
+		j main_b2
+	main_b4:
+		
+		#%t4 = load i32, i32* %t0
+		lw $t6, 0($s2)
+		
+		#%t5 = icmp sle i32 %t4, 10
+		
+		#br i1 %t5, label %b1, label %b3
+		ble $t6, 10, main_b1
+		j main_b3
+	main_b5:
+		
+		#%t7 = load i32, i32* %t6
+		lw $s7, 0($t6)
+		
+		#%t8 = load i32, i32* %t0
+		lw $t4, 0($s2)
+		
+		#%t9 = icmp slt i32 %t7, %t8
+		
+		#br i1 %t9, label %b6, label %b8
+		blt $s7, $t4, main_b6
+		j main_b8
+	main_b6:
+		
+		#%t10 = load i32, i32* %t6
+		lw $s7, 0($t6)
+		
+		#%t11 = getelementptr [10 x i32], [10 x i32]* @g0, i32 0, i32 %t10
+		lw $k0, -12($sp)
+		sll $s7, $s7, 2
+		addu $s7, $k0, $s7
+		
+		#%t12 = call i32 @getint()
+		li $v0, 5
+		syscall
+		move $t4, $v0
+		
+		#store i32 %t12, i32* %t11
+		sw $t4, 0($s7)
+		
+		#br label %b7
+		j main_b7
+	main_b7:
+		
+		#%t13 = load i32, i32* %t6
+		lw $s7, 0($t6)
+		
+		#%t14 = add nsw i32 %t13, 1
+		li $k1, 1
+		addiu $s7, $s7, 1
+		
+		#store i32 %t14, i32* %t6
+		sw $s7, 0($t6)
+		
+		#br label %b5
+		j main_b5
+	main_b8:
+		
+		#%t15 = alloca i32
+		addiu $t6, $sp, -16
+		
+		#%t16 = getelementptr [10 x i32], [10 x i32]* @g0, i32 0, i32 0
+		lw $k0, -12($sp)
+		addiu $s7, $k0, 0
+		
+		#%t17 = load i32, i32* %t0
+		lw $s2, 0($s2)
+		
+		#%t18 = call i32 @func0(i32* %t16, i32 %t17)
+		sw $t4, -20($sp)
+		sw $t6, -24($sp)
+		sw $s2, -28($sp)
+		sw $s7, -32($sp)
+		sw $ra, -36($sp)
+		move $a1, $s7
+		move $a2, $s2
+		addiu $sp, $sp, -36
+		jal func0
+		lw $ra, 0($sp)
+		addiu $sp, $sp, 36
+		lw $t4, -20($sp)
+		lw $t6, -24($sp)
+		lw $s2, -28($sp)
+		lw $s7, -32($sp)
+		addiu $s2, $v0, 0
+		
+		#store i32 %t18, i32* %t15
+		sw $s2, 0($t6)
+		
+		#%t19 = load i32, i32* %t15
+		lw $s2, 0($t6)
+		
+		#call void @putstr(i8* getelementptr inbounds ([19 x i8], [19 x i8]* @str3, i64 0, i64 0))
+		la $a0, str3
+		li $v0, 4
+		syscall
+		
+		#call void @putint(i32 %t19)
+		move $a0, $s2
+		li $v0, 1
+		syscall
+		
+		#call void @putstr(i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str4, i64 0, i64 0))
+		la $a0, str4
+		li $v0, 4
+		syscall
+		
+		#br label %b2
+		j main_b2
 func0:
 	func0_b0:
 		
 		#%t0 = alloca i32
-		addiu $s3, $sp, -12
+		addiu $s2, $sp, -12
 		
-		#store i32 %a0, i32* %t0
-		sw $a1, 0($s3)
+		#store i32 %a1, i32* %t0
+		sw $a2, 0($s2)
 		
 		#%t1 = alloca i32
-		addiu $t7, $sp, -16
-		
-		#store i32 %a1, i32* %t1
-		sw $a2, 0($t7)
+		addiu $t6, $sp, -16
 		
 		#%t2 = load i32, i32* %t0
-		lw $s3, 0($s3)
+		lw $s7, 0($s2)
 		
-		#%t3 = load i32, i32* %t1
-		lw $t7, 0($t7)
+		#%t3 = icmp sgt i32 %t2, 0
 		
-		#call void @putint(i32 %t2)
-		addiu $a0, $s3, 0
-		li $v0, 1
+		#br i1 %t3, label %b4, label %b3
+		bgt $s7, 0, func0_b4
+		j func0_b3
+	func0_b1:
+		
+		#%t6 = getelementptr i32, i32* %a0, i32 0
+		addiu $s7, $a1, 0
+		
+		#%t7 = load i32, i32* %t6
+		lw $s7, 0($s7)
+		
+		#store i32 %t7, i32* %t1
+		sw $s7, 0($t6)
+		
+		#%t8 = alloca i32
+		addiu $s7, $sp, -20
+		
+		#store i32 1, i32* %t8
+		sw $k1, 0($s7)
+		
+		#br label %b5
+		j func0_b5
+	func0_b2:
+		
+		#%t36 = load i32, i32* %t1
+		lw $s2, 0($t6)
+		
+		#ret i32 %t36
+		addiu $v0, $s2, 0
+		jr $ra
+	func0_b3:
+		
+		#%t35 = sub nsw i32 0, 1
+		li $k1, 0
+		li $k1, 1
+		subu $s2, $k1, $k1
+		
+		#store i32 %t35, i32* %t1
+		sw $s2, 0($t6)
+		
+		#call void @putstr(i8* getelementptr inbounds ([14 x i8], [14 x i8]* @str2, i64 0, i64 0))
+		la $a0, str2
+		li $v0, 4
 		syscall
 		
-		#call void @putstr(i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str0, i64 0, i64 0))
+		#br label %b2
+		j func0_b2
+	func0_b4:
+		
+		#%t4 = load i32, i32* %t0
+		lw $s7, 0($s2)
+		
+		#%t5 = icmp slt i32 %t4, 100
+		
+		#br i1 %t5, label %b1, label %b3
+		blt $s7, 100, func0_b1
+		j func0_b3
+	func0_b5:
+		
+		#%t9 = load i32, i32* %t8
+		lw $t4, 0($s7)
+		
+		#%t10 = load i32, i32* %t0
+		lw $s4, 0($s2)
+		
+		#%t11 = icmp slt i32 %t9, %t10
+		
+		#br i1 %t11, label %b6, label %b8
+		blt $t4, $s4, func0_b6
+		j func0_b8
+	func0_b6:
+		
+		#%t12 = load i32, i32* %t8
+		lw $t4, 0($s7)
+		
+		#%t13 = getelementptr i32, i32* %a0, i32 %t12
+		sll $t4, $t4, 2
+		addu $t4, $a1, $t4
+		
+		#%t14 = load i32, i32* %t13
+		lw $t4, 0($t4)
+		
+		#%t15 = load i32, i32* %t1
+		lw $s4, 0($t6)
+		
+		#%t16 = icmp sgt i32 %t14, %t15
+		
+		#br i1 %t16, label %b9, label %b11
+		bgt $t4, $s4, func0_b9
+		j func0_b11
+	func0_b7:
+		
+		#%t33 = load i32, i32* %t8
+		lw $t4, 0($s7)
+		
+		#%t34 = add nsw i32 %t33, 1
+		addiu $t4, $t4, 1
+		
+		#store i32 %t34, i32* %t8
+		sw $t4, 0($s7)
+		
+		#br label %b5
+		j func0_b5
+	func0_b8:
+		
+		#br label %b2
+		j func0_b2
+	func0_b9:
+		
+		#%t17 = load i32, i32* %t8
+		lw $t4, 0($s7)
+		
+		#%t18 = getelementptr i32, i32* %a0, i32 %t17
+		sll $t4, $t4, 2
+		addu $t4, $a1, $t4
+		
+		#%t19 = load i32, i32* %t18
+		lw $t4, 0($t4)
+		
+		#store i32 %t19, i32* %t1
+		sw $t4, 0($t6)
+		
+		#br label %b10
+		j func0_b10
+	func0_b10:
+		
+		#br label %b7
+		j func0_b7
+	func0_b11:
+		
+		#%t20 = load i32, i32* %t8
+		lw $t4, 0($s7)
+		
+		#%t21 = getelementptr i32, i32* %a0, i32 %t20
+		sll $t4, $t4, 2
+		addu $t4, $a1, $t4
+		
+		#%t22 = load i32, i32* %t21
+		lw $t4, 0($t4)
+		
+		#%t23 = load i32, i32* %t1
+		lw $s4, 0($t6)
+		
+		#%t24 = icmp eq i32 %t22, %t23
+		
+		#br i1 %t24, label %b12, label %b13
+		beq $t4, $s4, func0_b12
+		j func0_b13
+	func0_b12:
+		
+		#%t25 = load i32, i32* %t8
+		lw $t4, 0($s7)
+		
+		#%t26 = getelementptr i32, i32* %a0, i32 %t25
+		sll $t4, $t4, 2
+		addu $t4, $a1, $t4
+		
+		#%t27 = load i32, i32* %t26
+		lw $t4, 0($t4)
+		
+		#call void @putstr(i8* getelementptr inbounds ([20 x i8], [20 x i8]* @str0, i64 0, i64 0))
 		la $a0, str0
 		li $v0, 4
 		syscall
 		
-		#call void @putint(i32 %t3)
-		addiu $a0, $t7, 0
+		#call void @putint(i32 %t27)
+		move $a0, $t4
 		li $v0, 1
 		syscall
 		
@@ -100,74 +361,35 @@ func0:
 		li $v0, 4
 		syscall
 		
-		#ret void
-		jr $ra
-func1:
-	func1_b0:
+		#br label %b13
+		j func0_b13
+	func0_b13:
 		
-		#%t0 = alloca i32
-		addiu $s3, $sp, -20
+		#%t28 = icmp ne i32 0, 0
 		
-		#store i32 %a0, i32* %t0
-		sw $a1, 0($s3)
+		#br i1 %t28, label %b14, label %b15
+		j func0_b15
+	func0_b14:
 		
-		#%t1 = alloca i32
-		addiu $t7, $sp, -24
+		#%t29 = load i32, i32* %t8
+		lw $t4, 0($s7)
 		
-		#store i32 %a1, i32* %t1
-		sw $a2, 0($t7)
+		#%t30 = getelementptr i32, i32* %a0, i32 %t29
+		sll $t4, $t4, 2
+		addu $t4, $a1, $t4
 		
-		#%t2 = alloca i32
-		addiu $t6, $sp, -28
+		#%t31 = load i32, i32* %t30
+		lw $t4, 0($t4)
 		
-		#store i32 %a2, i32* %t2
-		sw $a3, 0($t6)
+		#%t32 = add nsw i32 %t31, 1
+		addiu $t4, $t4, 1
 		
-		#%t3 = alloca i32
-		addiu $s7, $sp, -32
+		#store i32 %t32, i32* %t1
+		sw $t4, 0($t6)
 		
-		#store i32 %a3, i32* %t3
-		lw $k1, -16($sp)
-		sw $k1, 0($s7)
+		#br label %b15
+		j func0_b15
+	func0_b15:
 		
-		#%t4 = load i32, i32* %t0
-		lw $s3, 0($s3)
-		
-		#%t5 = load i32, i32* %t1
-		lw $t7, 0($t7)
-		
-		#call void @func0(i32 %t4, i32 %t5)
-		sw $a1, -36($sp)
-		sw $a2, -40($sp)
-		sw $a3, -44($sp)
-		sw $t6, -48($sp)
-		sw $t7, -52($sp)
-		sw $s3, -56($sp)
-		sw $s7, -60($sp)
-		sw $ra, -64($sp)
-		move $a1, $s3
-		move $a2, $t7
-		addiu $sp, $sp, -64
-		jal func0
-		lw $ra, -64($sp)
-		addiu $sp, $sp, 64
-		lw $a1, -36($sp)
-		lw $a2, -40($sp)
-		lw $a3, -44($sp)
-		lw $t6, -48($sp)
-		lw $t7, -52($sp)
-		lw $s3, -56($sp)
-		lw $s7, -60($sp)
-		
-		#%t7 = load i32, i32* %t2
-		lw $s3, 0($t6)
-		
-		#%t8 = load i32, i32* %t3
-		lw $t7, 0($s7)
-		
-		#%t9 = add nsw i32 %t7, %t8
-		addu $s3, $s3, $t7
-		
-		#ret i32 %t9
-		addiu $v0, $s3, 0
-		jr $ra
+		#br label %b10
+		j func0_b10
