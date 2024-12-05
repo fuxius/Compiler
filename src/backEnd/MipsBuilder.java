@@ -119,11 +119,12 @@ public class MipsBuilder {
     public void buildGlobalVar(GlobalVar globalVar) {
         String name = globalVar.getRealName();
         LLVMType type = globalVar.getType();
-        if (type.isInt32()) {
-            handleInt32GlobalVar(globalVar, name);
-        } else if (type.isInt8()) {
-            handleInt8GlobalVar(globalVar, name);
-        }
+//        if (type.isInt32()) {
+//            handleInt32GlobalVar(globalVar, name);
+//        } else if (type.isInt8()) {
+//            handleInt8GlobalVar(globalVar, name);
+//        }
+        handleInt32GlobalVar(globalVar, name);
     }
 
     private void handleInt32GlobalVar(GlobalVar globalVar, String name) {
@@ -620,46 +621,94 @@ public class MipsBuilder {
         return currentStackOffset - (index + 1) * 4; // 每次分配 4 字节，静态偏移
     }
 
+    // 生成 GETPTR 指令的汇编代码
     public void buildGetPtr(GetPtr getPtr) {
-        // 获取基地址和偏移量
+        // 获取指针的基地址和偏移量
         Value base = getPtr.getOperands().get(0);
         Value offset = getPtr.getOperands().get(1);
 
-        // 获取目标寄存器
-        Register rd = registerPool.containsKey(getPtr)
-                ? getRegister(getPtr)
-                : Register.getRegister(Register.K1.ordinal());
+        // 确定目标寄存器（默认使用 $k0）
+        Register targetReg = Register.getRegister(Register.K0.ordinal());
 
-        // 加载基地址
-        Register baseReg = loadOperand(base, Register.getRegister(Register.K0.ordinal()));
+        // 处理基地址，获取基地址所在的寄存器
+        Register baseReg = determineBaseRegister(base);
 
-        // 加载偏移量
-        Register offsetReg;
-        int constantOffset = 0;
-        boolean isConstant = offset instanceof Constant;
-        if (isConstant) {
-            // 如果是常量偏移量
-            constantOffset = ((Constant) offset).getValue() * 4;
-            offsetReg = null; // 无需使用 offsetReg
+        // 处理偏移量，根据偏移量的类型（常量或变量）进行不同处理
+        processOffset(getPtr, baseReg, offset, targetReg);
+    }
+
+    // 确定基地址所在的寄存器
+    private Register determineBaseRegister(Value base) {
+        Register baseReg = Register.getRegister(Register.K0.ordinal());
+
+        if (base instanceof GlobalVar) {
+            // 如果基地址是全局变量，加载其地址到 baseReg 寄存器
+            text.add(new La(baseReg, base.getRealName()));
+        } else if (registerPool.containsKey(base)) {
+            // 如果基地址已被分配到寄存器，直接使用该寄存器
+            baseReg = getRegister(base);
         } else {
-            // 如果是变量偏移量
-            offsetReg = loadOperand(offset, Register.getRegister(Register.K1.ordinal()));
-            // 左移 2 位（乘以 4）
-            text.add(new AluAsm(AluAsm.AluOp.sll, offsetReg, offsetReg, 2));
+            // 否则，从栈中加载基地址的值到 baseReg 寄存器
+            text.add(new Mem(Mem.MemOp.lw, getStackOffset(base), Register.SP, baseReg));
         }
 
-        // 计算最终地址
-        if (isConstant) {
-            // 常量偏移量，直接使用 addiu 指令
-            text.add(new AluAsm(AluAsm.AluOp.addiu, rd, baseReg, constantOffset));
+        return baseReg;
+    }
+
+    // 处理偏移量，根据其是否为常量进行不同操作
+    private void processOffset(GetPtr getPtr, Register baseReg, Value offset, Register targetReg) {
+        Register offsetReg = Register.getRegister(Register.K1.ordinal());
+
+        if (offset instanceof Constant) {
+            // 处理常量偏移量
+            handleConstantOffset(getPtr, baseReg, (Constant) offset, targetReg, offsetReg);
         } else {
-            // 变量偏移量，使用 addu 指令
-            text.add(new AluAsm(AluAsm.AluOp.addu, rd, baseReg, offsetReg));
+            // 处理变量偏移量
+            handleVariableOffset(getPtr, baseReg, offset, targetReg, offsetReg);
+        }
+    }
+
+    // 处理常量偏移量
+    private void handleConstantOffset(GetPtr getPtr, Register baseReg, Constant offset, Register targetReg, Register tempReg) {
+        // 计算偏移量（乘以4以确保四字节对齐）
+        int scaledOffset = offset.getValue() * 4;
+
+        if (registerPool.containsKey(getPtr)) {
+            // 如果目标寄存器已被分配，直接使用该寄存器
+            targetReg = getRegister(getPtr);
+            // 使用 addiu 指令将基地址寄存器与偏移量相加，结果存储到目标寄存器中
+            text.add(new AluAsm(AluAsm.AluOp.addiu, targetReg, baseReg, scaledOffset));
+        } else {
+            // 使用临时寄存器存储结果
+            text.add(new AluAsm(AluAsm.AluOp.addiu, tempReg, baseReg, scaledOffset));
+            // 将临时寄存器的值存储到栈中指定的位置
+            text.add(new Mem(Mem.MemOp.sw, getStackOffset(getPtr), Register.SP, tempReg));
+        }
+    }
+
+    // 处理变量偏移量
+    private void handleVariableOffset(GetPtr getPtr, Register baseReg, Value offset, Register targetReg, Register tempReg) {
+        if (registerPool.containsKey(offset)) {
+            // 如果偏移量已被分配到寄存器，直接使用该寄存器
+            tempReg = getRegister(offset);
+        } else {
+            // 否则，从栈中加载偏移量的值到 tempReg 寄存器
+            text.add(new Mem(Mem.MemOp.lw, getStackOffset(offset), Register.SP, tempReg));
         }
 
-        // 如果目标寄存器是临时寄存器，则将结果存储到栈中
-        if (!registerPool.containsKey(getPtr)) {
-            text.add(new Mem(Mem.MemOp.sw, getStackOffset(getPtr), Register.SP, rd));
+        // 将偏移量左移2位（相当于乘以4），确保四字节对齐
+        text.add(new AluAsm(AluAsm.AluOp.sll, tempReg, tempReg, 2));
+
+        if (registerPool.containsKey(getPtr)) {
+            // 如果目标寄存器已被分配，直接使用该寄存器
+            targetReg = getRegister(getPtr);
+            // 使用 addu 指令将基地址寄存器与缩放后的偏移量相加，结果存储到目标寄存器中
+            text.add(new AluAsm(AluAsm.AluOp.addu, targetReg, baseReg, tempReg));
+        } else {
+            // 使用 addu 指令将基地址寄存器与缩放后的偏移量相加，结果存储到临时寄存器中
+            text.add(new AluAsm(AluAsm.AluOp.addu, tempReg, baseReg, tempReg));
+            // 将临时寄存器的值存储到栈中指定的位置
+            text.add(new Mem(Mem.MemOp.sw, getStackOffset(getPtr), Register.SP, tempReg));
         }
     }
 
@@ -688,7 +737,7 @@ public class MipsBuilder {
         Register rt = loadOperand(op2, Register.getRegister(Register.K1.ordinal()));
 
         // 生成比较指令
-        text.add(new CmpAsm(cmpOp, rs, rt, rd));
+        text.add(new CmpAsm(cmpOp, rd, rs, rt));//记住寄存器参数的顺序！！！找了很久
 
         // 如果目标寄存器是临时寄存器，则将结果存储到栈中
         if (!registerPool.containsKey(icmp)) {
@@ -964,8 +1013,4 @@ public class MipsBuilder {
         }
 
     }
-
-
-
-
 }
