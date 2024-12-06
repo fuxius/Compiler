@@ -95,7 +95,7 @@ public class Icmp extends Instruction {
 
     //遍历User检查该比较指令是否只是被用作控制流的条件判断（Branch），或者它是否有其他的计算或赋值用途。
     public boolean isControlFlow() {
-        for (Value user : getUsers()) {
+        for (Value user : this.getUsers()) {
             if (!(user instanceof Branch)) {
                 return false;
             }

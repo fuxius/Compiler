@@ -407,8 +407,8 @@ public class MipsBuilder {
         // 将计算结果存储到栈中
         text.add(new Mem(Mem.MemOp.sw, getStackOffset(alloca), Register.getRegister(Register.SP.ordinal()), tempReg));
     }
-
-    //生成 BRANCH 指令的汇编代码
+//
+//    //生成 BRANCH 指令的汇编代码
     public void buildBranch(Branch branch) {
         // 无条件分支
         if (!branch.isConditional()) {
@@ -451,7 +451,18 @@ public class MipsBuilder {
         if (op1 instanceof Constant || op2 instanceof Constant) {
             int constantValue = (op1 instanceof Constant) ? ((Constant) op1).getValue() : ((Constant) op2).getValue();
             Value nonConstantValue = (op1 instanceof Constant) ? op2 : op1;
-
+            if (op2 instanceof Constant) {
+            } else {
+                if (branchOp == BranchAsm.BranchOp.bgt) {
+                    branchOp = BranchAsm.BranchOp.blt;
+                } else if (branchOp == BranchAsm.BranchOp.ble) {
+                    branchOp = BranchAsm.BranchOp.bge;
+                } else if (branchOp == BranchAsm.BranchOp.blt) {
+                    branchOp = BranchAsm.BranchOp.bgt;
+                } else if (branchOp == BranchAsm.BranchOp.bge) {
+                    branchOp = BranchAsm.BranchOp.ble;
+                }
+            }
             // 加载非常量操作数
             Register reg = loadOperand(nonConstantValue, Register.getRegister(Register.K0.ordinal()));
 
@@ -469,6 +480,7 @@ public class MipsBuilder {
         text.add(new BranchAsm(branchOp, rs, rt, currentFunction.getRealName() + "_" + branch.getThenBlock().getName()));
         text.add(new JumpAsm(JumpAsm.JumpOp.j, currentFunction.getRealName() + "_" + branch.getElseBlock().getName()));
     }
+
     private boolean evaluateIcmpCondition(BranchAsm.BranchOp branchOp, int value1, int value2) {
         return switch (branchOp) {
             case beq -> value1 == value2;
@@ -486,10 +498,10 @@ public class MipsBuilder {
     private void handleControlFlowBranch(Branch branch, Icmp icmp) {
         Register rd = getRegister(icmp);
         if (rd != null) {
-            text.add(new BranchAsm(BranchAsm.BranchOp.beq, rd, Register.getRegister(Register.K0.ordinal()), currentFunction.getRealName() + "_" + branch.getElseBlock().getName()));
+            text.add(new BranchAsm(BranchAsm.BranchOp.beq, rd,1, currentFunction.getRealName() + "_" + branch.getThenBlock().getName()));
         } else {
             text.add(new Mem(Mem.MemOp.lw, getStackOffset(icmp), Register.getRegister(Register.SP.ordinal()), Register.getRegister(Register.K0.ordinal())));
-            text.add(new BranchAsm(BranchAsm.BranchOp.beq, Register.getRegister(Register.K0.ordinal()), 1, currentFunction.getRealName() + "_" + branch.getElseBlock().getName()));
+            text.add(new BranchAsm(BranchAsm.BranchOp.beq, Register.getRegister(Register.K0.ordinal()), 1, currentFunction.getRealName() + "_" + branch.getThenBlock().getName()));
         }
         text.add(new JumpAsm(JumpAsm.JumpOp.j, currentFunction.getRealName() + "_" + branch.getElseBlock().getName()));
     }
@@ -711,6 +723,7 @@ public class MipsBuilder {
             text.add(new Mem(Mem.MemOp.sw, getStackOffset(getPtr), Register.SP, tempReg));
         }
     }
+
 
 
     // 生成 ICMP 指令的汇编代码
