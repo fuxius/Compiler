@@ -1,5 +1,6 @@
 package LLVMIR.Base;
 
+import LLVMIR.Base.Core.User;
 import LLVMIR.LLVMType.LLVMType;
 
 /**

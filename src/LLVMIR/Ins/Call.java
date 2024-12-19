@@ -2,7 +2,7 @@ package LLVMIR.Ins;
 
 import LLVMIR.Base.BasicBlock;
 import LLVMIR.Base.Instruction;
-import LLVMIR.Base.Value;
+import LLVMIR.Base.Core.Value;
 import LLVMIR.Global.Function;
 import backEnd.Base.Register;
 

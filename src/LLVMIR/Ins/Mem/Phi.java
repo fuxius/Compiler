@@ -1,9 +1,9 @@
-package LLVMIR.Ins;
+package LLVMIR.Ins.Mem;
 
 import LLVMIR.Base.BasicBlock;
 import LLVMIR.Base.Instruction;
 import LLVMIR.LLVMType.LLVMType;
-import LLVMIR.Base.Value;
+import LLVMIR.Base.Core.Value;
 
 import java.util.ArrayList;
 

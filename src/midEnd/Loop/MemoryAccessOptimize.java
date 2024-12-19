@@ -2,13 +2,13 @@ package midEnd.Loop;
 
 import LLVMIR.Base.BasicBlock;
 import LLVMIR.Base.Instruction;
-import LLVMIR.Base.Value;
+import LLVMIR.Base.Core.Value;
 import LLVMIR.Global.Function;
 import LLVMIR.Global.GlobalVar;
-import LLVMIR.Base.Module;
+import LLVMIR.Base.Core.Module;
 import LLVMIR.Ins.Call;
-import LLVMIR.Ins.Load;
-import LLVMIR.Ins.Store;
+import LLVMIR.Ins.Mem.Load;
+import LLVMIR.Ins.Mem.Store;
 
 import java.util.ArrayList;
 import java.util.HashMap;

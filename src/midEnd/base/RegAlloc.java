@@ -2,12 +2,12 @@ package midEnd.base;
 
 import LLVMIR.Base.BasicBlock;
 import LLVMIR.Base.Instruction;
-import LLVMIR.Base.Value;
+import LLVMIR.Base.Core.Value;
 import LLVMIR.Global.Function;
-import LLVMIR.Base.Module;
-import LLVMIR.Ins.Alloca;
+import LLVMIR.Base.Core.Module;
+import LLVMIR.Ins.Mem.Alloca;
 import LLVMIR.Ins.Call;
-import LLVMIR.Ins.Phi;
+import LLVMIR.Ins.Mem.Phi;
 import backEnd.Base.Register;
 
 import java.util.*;

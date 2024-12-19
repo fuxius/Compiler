@@ -1,10 +1,16 @@
 package LLVMIR;
 
 import LLVMIR.Base.*;
-import LLVMIR.Base.Module;
+import LLVMIR.Base.Core.Value;
+import LLVMIR.Base.Core.Module;
+import LLVMIR.Base.Util.Loop;
 import LLVMIR.Global.ConstStr;
 import LLVMIR.Global.GlobalVar;
 import LLVMIR.Ins.*;
+import LLVMIR.Ins.CIo.*;
+import LLVMIR.Ins.Mem.Alloca;
+import LLVMIR.Ins.Mem.Load;
+import LLVMIR.Ins.Mem.Store;
 import LLVMIR.LLVMType.ArrayType;
 import LLVMIR.LLVMType.LLVMType;
 import LLVMIR.LLVMType.PointerType;

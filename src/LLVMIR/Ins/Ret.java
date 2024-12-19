@@ -2,7 +2,7 @@ package LLVMIR.Ins;
 
 import LLVMIR.Base.BasicBlock;
 import LLVMIR.Base.Instruction;
-import LLVMIR.Base.Value;
+import LLVMIR.Base.Core.Value;
 
 public class Ret extends Instruction {
 

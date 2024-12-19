@@ -1,7 +1,7 @@
 package midEnd.base;
 
 import LLVMIR.Base.BasicBlock;
-import LLVMIR.Base.Value;
+import LLVMIR.Base.Core.Value;
 import LLVMIR.Global.Function;
 
 import java.util.HashSet;

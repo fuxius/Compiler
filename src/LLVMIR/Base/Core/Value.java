@@ -1,9 +1,8 @@
-package LLVMIR.Base;
+package LLVMIR.Base.Core;
 
 import LLVMIR.LLVMType.LLVMType;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 /**

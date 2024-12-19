@@ -1,165 +1,237 @@
 package midEnd.helper;
 
-
-
 import LLVMIR.Base.BasicBlock;
-import LLVMIR.Base.Module;
+import LLVMIR.Base.Core.Module;
 import LLVMIR.Global.Function;
-import LLVMIR.IRBuilder;
 import LLVMIR.Base.Instruction;
-
-
 import LLVMIR.Ins.Branch;
-import LLVMIR.Ins.Phi;
-import LLVMIR.Ins.Ret;
+import LLVMIR.Ins.Mem.Phi;
 
-
-import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 
+/**
+ * 代码优化辅助类
+ * 用于删除不可达代码块和合并基本块
+ */
 public class delete {
-    private static HashSet<BasicBlock> reachableBlocks;
+    // 存储可达的基本块集合
+    private static HashSet<BasicBlock> accessibleBlocks;
 
-    public static void rearrange(Module module) {
-        for (Function function : module.getFunctions()) {
-            BasicBlock firstBlock = function.getBasicBlocks().get(0);
-            ArrayList<BasicBlock> blocks = new ArrayList<>(function.getBasicBlocks());
-
-            for (BasicBlock block : blocks) {
-                Instruction lastInstruction = block.getInstrs().get(block.getInstrs().size() - 1);
-
-                if (lastInstruction instanceof Ret) continue;
-
-                BasicBlock targetBlock;
-                if (!((Branch)lastInstruction).isConditional()) {
-                    targetBlock = ((Branch) lastInstruction).getTargetBlock();
-                } else {
-                    targetBlock = ((Branch) lastInstruction).getElseBlock();
-                }
-
-                if (targetBlock != block) {
-                    function.getBasicBlocks().remove(block);
-                    function.getBasicBlocks().add(function.getBasicBlocks().indexOf(targetBlock), block);
-                }
+    /**
+     * 简化模块中的代码
+     * 包括删除死代码和不可达块
+     * @param targetModule 待处理的模块
+     */
+    public static void simplify(Module targetModule) {
+        for (Function currentFunc : targetModule.getFunctions()) {
+            // 第一步：清理每个基本块中的死代码
+            for (BasicBlock currentBlock : currentFunc.getBasicBlocks()) {
+                cleanDeadCode(currentBlock);
             }
 
-            if (function.getBasicBlocks().get(0) != firstBlock) {
-                BasicBlock newEntryBlock = new BasicBlock(IRBuilder.blockName + function.getBlockId(), function);
-                Branch jumpToFirstBlock = new Branch(firstBlock, newEntryBlock);
-                newEntryBlock.addInstr(jumpToFirstBlock);
-                function.getBasicBlocks().add(0, newEntryBlock);
-            }
+            // 第二步：标记从入口块开始的所有可达块
+            BasicBlock startBlock = currentFunc.getBasicBlocks().get(0);
+            accessibleBlocks = new HashSet<>();
+            markReachableBlocks(startBlock);
 
-            if (function.getName().equals("@main")) {
-                List<Instruction> lastBlockInstructions = function.getBasicBlocks()
-                        .get(function.getBasicBlocks().size() - 1)
-                        .getInstrs();
-                if (lastBlockInstructions.get(lastBlockInstructions.size() - 1) instanceof Ret &&
-                        module.getFunctions().size() == 1) {
-                    lastBlockInstructions.remove(lastBlockInstructions.size() - 1);
-                }
-            }
+            // 第三步：清理不可达的基本块
+            removeUnreachableBlocks(currentFunc);
         }
     }
 
-    public static void simplify(Module module) {
-        for (Function function : module.getFunctions()) {
-            // 先清理死代码
-            for (BasicBlock block : function.getBasicBlocks()) {
-                removeDeadInstructions(block);
-            }
+    /**
+     * 清理基本块中的死代码
+     * @param targetBlock 待处理的基本块
+     */
+    public static void cleanDeadCode(BasicBlock targetBlock) {
+        List<Instruction> instrList = targetBlock.getInstrs();
+        int terminatorPos = findTerminatorPosition(instrList);
 
-            // 标记可达块
-            BasicBlock entryBlock = function.getBasicBlocks().get(0);
-            reachableBlocks = new HashSet<>();
-            findReachableBlocks(entryBlock);
-
-            // 删除不可达块
-            Iterator<BasicBlock> iterator = function.getBasicBlocks().iterator();
-            while (iterator.hasNext()) {
-                BasicBlock block = iterator.next();
-                if (!reachableBlocks.contains(block)) {
-                    // 清理块内指令的操作数
-                    for (Instruction instr : block.getInstrs()) {
-                        instr.removeOperands();
-                    }
-                    // 清理块本身的操作数
-                    block.removeOperands();
-                    // 从函数中移除
-                    iterator.remove();
-                    // 标记为已删除
-                    block.setDeleted();
-                }
-            }
-        }
+        // 删除终止指令后的所有指令
+        removeInstructionsAfterTerminator(instrList, terminatorPos);
     }
 
-    public static void removeDeadInstructions(BasicBlock block) {
-        List<Instruction> instructions = block.getInstrs();
-        int index = 0;
-
-        while (true) {
-            Instruction.InstrType type = instructions.get(index).getInstrType();
-            if (type == Instruction.InstrType.JUMP ||
-                    type == Instruction.InstrType.BRANCH ||
-                    type == Instruction.InstrType.RETURN) {
+    /**
+     * 查找基本块中终止指令的位置
+     * @param instructions 指令列表
+     * @return 终止指令的位置
+     */
+    private static int findTerminatorPosition(List<Instruction> instructions) {
+        int pos = 0;
+        while (pos < instructions.size()) {
+            Instruction.InstrType currentType = instructions.get(pos).getInstrType();
+            if (isTerminator(currentType)) {
                 break;
             }
-            index++;
+            pos++;
         }
+        return pos;
+    }
 
-        index++;
-        while (index < instructions.size()) {
-            instructions.get(index).removeOperands();
-            instructions.remove(index);
+    /**
+     * 判断指令类型是否为终止指令
+     * @param type 指令类型
+     * @return 是否为终止指令
+     */
+    private static boolean isTerminator(Instruction.InstrType type) {
+        return type == Instruction.InstrType.JUMP ||
+                type == Instruction.InstrType.BRANCH ||
+                type == Instruction.InstrType.RETURN;
+    }
+
+    /**
+     * 删除终止指令后的所有指令
+     * @param instructions 指令列表
+     * @param terminatorPos 终止指令位置
+     */
+    private static void removeInstructionsAfterTerminator(List<Instruction> instructions, int terminatorPos) {
+        int nextPos = terminatorPos + 1;
+        while (nextPos < instructions.size()) {
+            instructions.get(nextPos).removeOperands();
+            instructions.remove(nextPos);
         }
     }
 
-    public static void findReachableBlocks(BasicBlock block) {
-        if (reachableBlocks.contains(block)) {
+    /**
+     * 标记所有可达的基本块
+     * @param currentBlock 当前基本块
+     */
+    public static void markReachableBlocks(BasicBlock currentBlock) {
+        if (accessibleBlocks.contains(currentBlock)) {
             return;
         }
 
-        reachableBlocks.add(block);
-        Instruction lastInstruction = block.getInstrs().get(block.getInstrs().size() - 1);
+        accessibleBlocks.add(currentBlock);
 
-        if (lastInstruction instanceof Branch && !((Branch) lastInstruction).isConditional()) {
-            findReachableBlocks(((Branch) lastInstruction).getTargetBlock());
-        } else if (lastInstruction instanceof Branch && ((Branch) lastInstruction).isConditional()) {
-            findReachableBlocks(((Branch) lastInstruction).getThenBlock());
-            findReachableBlocks(((Branch) lastInstruction).getElseBlock());
+        // 获取块的最后一条指令
+        List<Instruction> instrList = currentBlock.getInstrs();
+        Instruction lastInstr = instrList.get(instrList.size() - 1);
+
+        // 根据不同的分支类型处理后继块
+        processSuccessorBlocks(lastInstr);
+    }
+
+    /**
+     * 处理后继基本块
+     * @param terminator 终止指令
+     */
+    private static void processSuccessorBlocks(Instruction terminator) {
+        if (terminator instanceof Branch) {
+            Branch branchInstr = (Branch) terminator;
+            if (branchInstr.isConditional()) {
+                // 条件分支：递归处理两个分支
+                markReachableBlocks(branchInstr.getThenBlock());
+                markReachableBlocks(branchInstr.getElseBlock());
+            } else {
+                // 无条件跳转：只处理目标块
+                markReachableBlocks(branchInstr.getTargetBlock());
+            }
         }
     }
 
-    public static void mergeBlocks(Module module) {
-        for (Function function : module.getFunctions()) {
-            for (BasicBlock block : function.getBasicBlocks()) {
-                if (!block.isDeleted() && block.getSuccessors().size() == 1) {
-                    BasicBlock successor = block.getSuccessors().get(0);
-
-                    if (successor.getPredecessors().size() == 1) {
-                        Instruction jumpInstruction = block.getInstrs().remove(block.getInstrs().size() - 1);
-
-                        for (Instruction instruction : successor.getInstrs()) {
-                            if (instruction instanceof Phi) {
-                                Phi phi = (Phi) instruction;
-                                phi.modifyValueForUsers(phi.getOperands().get(phi.getIncomingBlocks().indexOf(block)));
-                                phi.removeOperands();
-                            } else {
-                                block.addInstr(instruction);
-                                instruction.setParentBlock(block);
-                            }
-                        }
-
-                        successor.modifyValueForUsers(block);
-                        successor.setDeleted();
-                    }
-                }
+    /**
+     * 删除不可达的基本块
+     * @param function 当前函数
+     */
+    private static void removeUnreachableBlocks(Function function) {
+        Iterator<BasicBlock> blockIter = function.getBasicBlocks().iterator();
+        while (blockIter.hasNext()) {
+            BasicBlock currentBlock = blockIter.next();
+            if (!accessibleBlocks.contains(currentBlock)) {
+                cleanupBlock(currentBlock);
+                blockIter.remove();
+                currentBlock.setDeleted();
             }
-
-            function.getBasicBlocks().removeIf(BasicBlock::isDeleted);
         }
+    }
+
+    /**
+     * 清理基本块的操作数
+     * @param block 待清理的基本块
+     */
+    private static void cleanupBlock(BasicBlock block) {
+        // 清理块内所有指令的操作数
+        for (Instruction instr : block.getInstrs()) {
+            instr.removeOperands();
+        }
+        // 清理块本身的操作数
+        block.removeOperands();
+    }
+
+    /**
+     * 合并基本块
+     * 将只有一个后继且该后继只有一个前驱的基本块合并
+     * @param targetModule 待处理的模块
+     */
+    public static void mergeBlocks(Module targetModule) {
+        for (Function currentFunc : targetModule.getFunctions()) {
+            processFunctionBlocks(currentFunc);
+            // 移除已删除的基本块
+            currentFunc.getBasicBlocks().removeIf(BasicBlock::isDeleted);
+        }
+    }
+
+    /**
+     * 处理函数中的基本块合并
+     * @param function 当前函数
+     */
+    private static void processFunctionBlocks(Function function) {
+        for (BasicBlock currentBlock : function.getBasicBlocks()) {
+            if (canMergeBlock(currentBlock)) {
+                BasicBlock nextBlock = currentBlock.getSuccessors().get(0);
+                mergeConsecutiveBlocks(currentBlock, nextBlock);
+            }
+        }
+    }
+
+    /**
+     * 检查基本块是否可以合并
+     * @param block 待检查的基本块
+     * @return 是否可以合并
+     */
+    private static boolean canMergeBlock(BasicBlock block) {
+        if (block.isDeleted() || block.getSuccessors().size() != 1) {
+            return false;
+        }
+        BasicBlock successor = block.getSuccessors().get(0);
+        return successor.getPredecessors().size() == 1;
+    }
+
+    /**
+     * 合并两个连续的基本块
+     * @param source 源基本块
+     * @param target 目标基本块
+     */
+    private static void mergeConsecutiveBlocks(BasicBlock source, BasicBlock target) {
+        // 移除源块的跳转指令
+        source.getInstrs().remove(source.getInstrs().size() - 1);
+
+        // 处理目标块中的指令
+        for (Instruction instr : target.getInstrs()) {
+            if (instr instanceof Phi) {
+                handlePhiInstruction((Phi) instr, source);
+            } else {
+                // 移动普通指令到源块
+                source.addInstr(instr);
+                instr.setParentBlock(source);
+            }
+        }
+
+        // 更新引用关系并标记目标块为已删除
+        target.modifyValueForUsers(source);
+        target.setDeleted();
+    }
+
+    /**
+     * 处理Phi指令
+     * @param phi Phi指令
+     * @param sourceBlock 源基本块
+     */
+    private static void handlePhiInstruction(Phi phi, BasicBlock sourceBlock) {
+        int blockIndex = phi.getIncomingBlocks().indexOf(sourceBlock);
+        phi.modifyValueForUsers(phi.getOperands().get(blockIndex));
+        phi.removeOperands();
     }
 }

@@ -5,7 +5,7 @@ import LLVMIR.Base.Instruction;
 import LLVMIR.LLVMType.ArrayType;
 import LLVMIR.LLVMType.LLVMType;
 import LLVMIR.LLVMType.PointerType;
-import LLVMIR.Base.Value;
+import LLVMIR.Base.Core.Value;
 
 /**
  * 表示 LLVM 中的 GetElementPtr 指令

@@ -1,8 +1,14 @@
 package backEnd;
 
 import LLVMIR.Base.*;
-import LLVMIR.Base.Module;
+import LLVMIR.Base.Core.Value;
+import LLVMIR.Base.Core.Module;
+import LLVMIR.Base.Util.Undef;
 import LLVMIR.Global.Function;
+import LLVMIR.Ins.CIo.*;
+import LLVMIR.Ins.Mem.Alloca;
+import LLVMIR.Ins.Mem.Load;
+import LLVMIR.Ins.Mem.Store;
 import LLVMIR.LLVMType.ArrayType;
 import LLVMIR.LLVMType.LLVMType;
 import backEnd.Base.AsmInstruction;
@@ -12,7 +18,18 @@ import backEnd.Global.*;
 import LLVMIR.Ins.*;
 import LLVMIR.Global.ConstStr;
 import LLVMIR.Global.GlobalVar;
-import backEnd.Instruction.*;
+import backEnd.Instruction.Alu.AluAsm;
+import backEnd.Instruction.Br.BranchAsm;
+import backEnd.Instruction.Br.CmpAsm;
+import backEnd.Instruction.Br.JumpAsm;
+import backEnd.Instruction.Move.MoveAsm;
+import backEnd.Instruction.Move.MoveFrom;
+import backEnd.Instruction.Move.MoveTo;
+import backEnd.Instruction.Sys.La;
+import backEnd.Instruction.Sys.Li;
+import backEnd.Instruction.Sys.Mem;
+import backEnd.Instruction.Sys.Syscall;
+import backEnd.Instruction.util.Comment;
 import midEnd.Optimizer;
 
 

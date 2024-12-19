@@ -3,7 +3,7 @@ package LLVMIR.Global;
 import LLVMIR.LLVMType.LLVMType;
 import LLVMIR.LLVMType.PointerType;
 import LLVMIR.LLVMType.ArrayType;
-import LLVMIR.Base.Value;
+import LLVMIR.Base.Core.Value;
 import java.util.Objects;
 
 /**

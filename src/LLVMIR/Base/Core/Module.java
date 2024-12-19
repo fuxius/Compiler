@@ -1,5 +1,6 @@
-package LLVMIR.Base;
+package LLVMIR.Base.Core;
 
+import LLVMIR.Base.Core.Value;
 import LLVMIR.Global.ConstStr;
 import LLVMIR.Global.GlobalVar;
 import LLVMIR.Global.Function;

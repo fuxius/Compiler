@@ -1,8 +1,11 @@
 package LLVMIR.Global;
 
 import LLVMIR.Base.*;
+import LLVMIR.Base.Core.User;
+import LLVMIR.Base.Core.Value;
 import LLVMIR.IRBuilder;
 import LLVMIR.Ins.*;
+import LLVMIR.Ins.CIo.*;
 import LLVMIR.LLVMType.LLVMType;
 import backEnd.Base.Register;
 
@@ -217,7 +220,7 @@ public class Function extends User {
                 if (instr instanceof Call
                         || instr instanceof Getint ||
                         instr instanceof Putint ||
-                        instr instanceof Putstr||
+                        instr instanceof Putstr ||
                 instr instanceof Getchar ||
                 instr instanceof Putch) {
                     gvnAble = false;

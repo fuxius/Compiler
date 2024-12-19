@@ -1,10 +1,16 @@
 package midEnd.helper;
 
 import LLVMIR.Base.*;
-import LLVMIR.Base.Module;
+import LLVMIR.Base.Core.Value;
+import LLVMIR.Base.Core.Module;
 import LLVMIR.Global.Function;
 import LLVMIR.Global.GlobalVar;
 import LLVMIR.Ins.*;
+import LLVMIR.Ins.CIo.Getint;
+import LLVMIR.Ins.CIo.Putint;
+import LLVMIR.Ins.CIo.Putstr;
+import LLVMIR.Ins.Mem.Store;
+
 import java.util.HashSet;
 
 /**

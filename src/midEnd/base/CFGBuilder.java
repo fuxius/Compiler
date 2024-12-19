@@ -2,7 +2,7 @@ package midEnd.base;
 
 import LLVMIR.Base.BasicBlock;
 import LLVMIR.Base.Instruction;
-import LLVMIR.Base.Module;
+import LLVMIR.Base.Core.Module;
 import LLVMIR.Global.Function;
 import LLVMIR.Ins.Branch;
 

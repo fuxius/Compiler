@@ -1,9 +1,13 @@
 package midEnd.Var;
 
 import LLVMIR.Base.*;
-import LLVMIR.Base.Module;
+import LLVMIR.Base.Core.User;
+import LLVMIR.Base.Core.Value;
+import LLVMIR.Base.Core.Module;
 import LLVMIR.Ins.*;
 import LLVMIR.Global.Function;
+import LLVMIR.Ins.Mem.Load;
+import LLVMIR.Ins.Mem.Phi;
 import LLVMIR.LLVMType.PointerType;
 
 import java.util.ArrayList;

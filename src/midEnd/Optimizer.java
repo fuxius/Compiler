@@ -1,5 +1,5 @@
 package midEnd;
-import LLVMIR.Base.Module;
+import LLVMIR.Base.Core.Module;
 import LLVMIR.Global.Function;
 import midEnd.Loop.LoopAnalysis;
 import midEnd.Loop.MemoryAccessOptimize;

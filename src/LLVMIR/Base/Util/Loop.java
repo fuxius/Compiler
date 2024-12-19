@@ -1,4 +1,4 @@
-package LLVMIR.Base;
+package LLVMIR.Base.Util;
 
 import LLVMIR.Base.BasicBlock;
 

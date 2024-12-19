@@ -1,4 +1,4 @@
-package backEnd.Instruction;
+package backEnd.Instruction.util;
 
 import LLVMIR.Base.Instruction;
 import backEnd.Base.AsmInstruction;

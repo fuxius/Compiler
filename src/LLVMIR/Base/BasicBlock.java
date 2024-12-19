@@ -1,9 +1,10 @@
 package LLVMIR.Base;
 
+import LLVMIR.Base.Core.User;
+import LLVMIR.Base.Core.Value;
 import LLVMIR.Global.GlobalVar;
 import LLVMIR.Ins.Branch;
-import LLVMIR.Ins.Phi;
-import LLVMIR.Ins.Ret;
+import LLVMIR.Ins.Mem.Phi;
 import LLVMIR.LLVMType.LLVMType;
 import LLVMIR.Global.Function;
 import midEnd.Loop.LoopInfo;
@@ -11,7 +12,6 @@ import midEnd.Loop.LoopInfo;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
 /**
  * 表示 LLVM IR 中的基本块，每个基本块是一个指令的序列

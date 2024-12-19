@@ -1,10 +1,10 @@
-package LLVMIR.Ins;
+package LLVMIR.Ins.Mem;
 
 import LLVMIR.Base.BasicBlock;
 import LLVMIR.Base.Instruction;
 import LLVMIR.LLVMType.LLVMType;
 import LLVMIR.LLVMType.PointerType;
-import LLVMIR.Base.Value;
+import LLVMIR.Base.Core.Value;
 
 /**
  * 表示 LLVM IR 中的加载指令 (load)

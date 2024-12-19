@@ -1,11 +1,15 @@
 package midEnd.Var;
 
 import LLVMIR.Base.*;
-import LLVMIR.Base.Module;
+import LLVMIR.Base.Core.User;
+import LLVMIR.Base.Core.Value;
+import LLVMIR.Base.Core.Module;
 import LLVMIR.Global.Function;
 import LLVMIR.Global.GlobalVar;
 import LLVMIR.IRBuilder;
 import LLVMIR.Ins.*;
+import LLVMIR.Ins.Mem.Alloca;
+import LLVMIR.Ins.Mem.Load;
 import midEnd.helper.delete;
 import midEnd.Optimizer;
 import java.util.ArrayList;

@@ -1,7 +1,7 @@
 package midEnd.Loop;
 
 import LLVMIR.Base.BasicBlock;
-import LLVMIR.Base.Module;
+import LLVMIR.Base.Core.Module;
 import LLVMIR.Global.Function;
 
 import java.util.ArrayList;

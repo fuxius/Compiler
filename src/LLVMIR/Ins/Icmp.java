@@ -3,7 +3,7 @@ package LLVMIR.Ins;
 import LLVMIR.Base.BasicBlock;
 import LLVMIR.Base.Instruction;
 import LLVMIR.LLVMType.LLVMType;
-import LLVMIR.Base.Value;
+import LLVMIR.Base.Core.Value;
 
 /**
  * 表示 LLVM 中的整数比较指令

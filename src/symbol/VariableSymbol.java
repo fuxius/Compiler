@@ -1,7 +1,7 @@
 package symbol;
 
 import LLVMIR.LLVMType.LLVMType;
-import LLVMIR.Base.Value;
+import LLVMIR.Base.Core.Value;
 
 import java.util.ArrayList;
 

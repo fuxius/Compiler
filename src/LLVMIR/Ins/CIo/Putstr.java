@@ -1,4 +1,4 @@
-package LLVMIR.Ins;
+package LLVMIR.Ins.CIo;
 
 import LLVMIR.Base.BasicBlock;
 import LLVMIR.Global.ConstStr;

@@ -1,4 +1,4 @@
-package backEnd.Instruction;
+package backEnd.Instruction.Move;
 
 import backEnd.Base.AsmInstruction;
 import backEnd.Base.Register;

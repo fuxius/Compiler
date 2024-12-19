@@ -1,12 +1,14 @@
 package midEnd.mem;
 
 import LLVMIR.Base.*;
-import LLVMIR.Base.Module;
+import LLVMIR.Base.Core.Value;
+import LLVMIR.Base.Core.Module;
+import LLVMIR.Base.Util.Undef;
 import LLVMIR.Global.Function;
 import LLVMIR.IRBuilder;
 import LLVMIR.Ins.Branch;
 import LLVMIR.Ins.Move;
-import LLVMIR.Ins.Phi;
+import LLVMIR.Ins.Mem.Phi;
 import LLVMIR.LLVMType.LLVMType;
 import backEnd.Base.Register;
 

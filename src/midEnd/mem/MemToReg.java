@@ -1,13 +1,16 @@
 package midEnd.mem;
 
-import LLVMIR.Ins.Alloca;
+import LLVMIR.Base.Core.User;
+import LLVMIR.Base.Core.Value;
+import LLVMIR.Base.Util.Undef;
+import LLVMIR.Ins.Mem.Alloca;
 import LLVMIR.Base.*;
 import LLVMIR.Global.Function;
 import LLVMIR.IRBuilder;
-import LLVMIR.Ins.Load;
-import LLVMIR.Ins.Phi;
-import LLVMIR.Ins.Store;
-import LLVMIR.Base.Module;
+import LLVMIR.Ins.Mem.Load;
+import LLVMIR.Ins.Mem.Phi;
+import LLVMIR.Ins.Mem.Store;
+import LLVMIR.Base.Core.Module;
 import LLVMIR.LLVMType.LLVMType;
 
 import java.util.ArrayList;

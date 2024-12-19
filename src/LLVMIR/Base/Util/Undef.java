@@ -1,5 +1,6 @@
-package LLVMIR.Base;
+package LLVMIR.Base.Util;
 
+import LLVMIR.Base.Constant;
 import LLVMIR.LLVMType.LLVMType;
 
 /**
