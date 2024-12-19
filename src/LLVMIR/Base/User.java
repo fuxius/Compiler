@@ -92,4 +92,8 @@ public class User extends Value {
     public List<Value> getOperands() {
         return operands;
     }
+
+    public void setOperands(Value value,int pos) {
+        this.operands.set(pos,value);
+    }
 }

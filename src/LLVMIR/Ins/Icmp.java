@@ -102,5 +102,27 @@ public class Icmp extends Instruction {
         }
         return true;
     }
+    public String getGvnHash(){
+        String name1=operands.get(0).getName();
+        String name2=operands.get(1).getName();
+        OP temp = op;
+        if(name1.compareTo(name2)<0){
+            name1=operands.get(1).getName();
+            name2=operands.get(0).getName();
+            if(op==OP.SGE){
+                temp=OP.SLE;
+            }
+            else if(op==OP.SLE){
+                temp=OP.SGE;
+            }
+            else if(op==OP.SGT){
+                temp=OP.SLT;
+            }
+            else if(op==OP.SLT){
+                temp=OP.SGT;
+            }
+        }
+        return name1+temp+name2;
+    }
 
 }

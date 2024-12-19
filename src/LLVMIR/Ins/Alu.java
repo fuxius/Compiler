@@ -30,7 +30,7 @@ public class Alu extends Instruction {
         }
     }
 
-    private final OP op; // ALU 操作类型
+    private OP op; // ALU 操作类型
 
     /**
      * 构造 ALU 指令
@@ -83,5 +83,19 @@ public class Alu extends Instruction {
                 operands.get(0).getName(),
                 operands.get(1).getName()
         );
+    }
+    public void setOp(OP op) {
+        this.op = op;
+    }
+    public String getGvnHash(){
+        String op1=operands.get(0).getName();
+        String op2=operands.get(1).getName();
+        if(op==OP.ADD || op==OP.MUL){
+            if(op1.compareTo(op2)<0){
+                op2=operands.get(0).getName();
+                op1=operands.get(1).getName();
+            }
+        }
+        return op1+op+op2;
     }
 }

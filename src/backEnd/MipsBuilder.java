@@ -251,209 +251,242 @@ public class MipsBuilder {
             return defaultRegister;
         }
     }
-    public void buildAlu(Alu aluInstr) {
-        Value value1 = aluInstr.getOperands().get(0);
-        Value value2 = aluInstr.getOperands().get(1);
-        Alu.OP op = aluInstr.getOp();
-        int consCnt = 0;
-        if (value1 instanceof Constant) {
-            consCnt++;
-        }
-        if (value2 instanceof Constant) {
-            consCnt++;
-        }
-        Register to;
-        if (registerPool.containsKey(aluInstr)) {
-            to = registerPool.get(aluInstr);
-        } else {
-            to = Register.K0;
+
+        public void buildAlu(Alu aluInstr) {
+            Value value1 = aluInstr.getOperands().get(0);
+            Value value2 = aluInstr.getOperands().get(1);
+            Alu.OP op = aluInstr.getOp();
+
+            // 计算常量操作数的数量
+            int constCount = 0;
+            if (value1 instanceof Constant) constCount++;
+            if (value2 instanceof Constant) constCount++;
+
+            // 获取目标寄存器
+            Register targetReg = registerPool.containsKey(aluInstr) ?
+                    registerPool.get(aluInstr) : Register.K0;
+
+            if (constCount == 2) {
+                handleTwoConstants(aluInstr, value1, value2, op, targetReg);
+            } else if (constCount == 1) {
+                handleOneConstant(aluInstr, value1, value2, op, targetReg);
+            } else {
+                handleNoConstants(aluInstr, value1, value2, op, targetReg);
+            }
+
+            // 如果使用临时寄存器，需要存回栈中
+            if (targetReg == Register.K0) {
+                text.add(new Mem(Mem.MemOp.sw, stackOffset.get(aluInstr), Register.SP, Register.K0));
+            }
         }
 
-        if (consCnt == 2) {
+        private void handleTwoConstants(Alu aluInstr, Value value1, Value value2,
+                                        Alu.OP op, Register targetReg) {
             text.add(new Li(Register.K0, ((Constant) value1).getValue()));
-            if (!(op == Alu.OP.ADD || op == Alu.OP.SUB)) {
-                text.add(new Li(Register.K1, ((Constant) value2).getValue()));
-                if (op == Alu.OP.MUL) {
-                    text.add(new AluAsm(AluAsm.AluOp.mul, to, Register.K0, Register.K1));
-                } else {
-                    text.add(new AluAsm(AluAsm.AluOp.div, Register.K0, Register.K1));
-                    if (op == Alu.OP.SREM) {
-                        text.add(new MoveFrom(MoveFrom.Type.MFHI, to));
-                    } else {
-                        text.add(new MoveFrom(MoveFrom.Type.MFLO, to));
-                    }
-                }
-            } else {
-                int num = op == Alu.OP.ADD ? ((Constant) value2).getValue() : -((Constant) value2).getValue();
-                text.add(new Li(Register.K1, num));
-                text.add(new AluAsm(AluAsm.AluOp.addu, to, Register.K0, Register.K1));
+
+            if (op == Alu.OP.ADD || op == Alu.OP.SUB) {
+                int num = op == Alu.OP.ADD ?
+                        ((Constant) value2).getValue() :
+                        -((Constant) value2).getValue();
+                text.add(new AluAsm(AluAsm.AluOp.addiu, targetReg, Register.K0, num));
+                return;
             }
-        } else if (consCnt == 1) {
+
+            text.add(new Li(Register.K1, ((Constant) value2).getValue()));
+            if (op == Alu.OP.MUL) {
+                text.add(new AluAsm(AluAsm.AluOp.mul, targetReg, Register.K0, Register.K1));
+            } else {
+                text.add(new AluAsm(AluAsm.AluOp.div, Register.K0, Register.K1));
+                text.add(new MoveFrom(op == Alu.OP.SREM ? MoveFrom.Type.MFHI : MoveFrom.Type.MFLO, targetReg));
+            }
+        }
+
+        private void handleOneConstant(Alu aluInstr, Value value1, Value value2,
+                                       Alu.OP op, Register targetReg) {
             if (value1 instanceof Constant) {
-                Register operand2 = Register.K0;
-                if (registerPool.containsKey(value2)) {
-                    operand2 = registerPool.get(value2);
-                } else {
-                    text.add(new Mem(Mem.MemOp.lw, stackOffset.get(value2), Register.SP, Register.K0));
-                }
-                if (op == Alu.OP.ADD) {
-                    text.add(new Li(Register.K1, ((Constant) value1).getValue()));
-                    text.add(new AluAsm(AluAsm.AluOp.addu, to, operand2, Register.K1));
-                } else {
-                    if (op == Alu.OP.MUL) {
-                        int cons = ((Constant) value1).getValue();
-                        buildMulWithCons(operand2, cons, to);
-                    } else {
-                        text.add(new Li(Register.K1, ((Constant) value1).getValue()));
-                        if (op == Alu.OP.SUB) {
-                            text.add(new AluAsm(AluAsm.AluOp.subu, to, Register.K1, operand2));
-                        } else {
-                            text.add(new AluAsm(AluAsm.AluOp.div, Register.K1, operand2));
-                            if (op == Alu.OP.SDIV) {
-                                text.add(new MoveFrom(MoveFrom.Type.MFLO, to));
-                            } else {
-                                text.add(new MoveFrom(MoveFrom.Type.MFHI, to));
-                            }
-                        }
-                    }
-                }
+                handleConstantFirstOperand(value1, value2, op, targetReg);
             } else {
-                Register operand1 = Register.K0;
-                int num;
-                if (registerPool.containsKey(value1)) {
-                    operand1 = registerPool.get(value1);
-                } else {
-                    text.add(new Mem(Mem.MemOp.lw, stackOffset.get(value1), Register.SP, Register.K0));
-                }
-                num = ((Constant) value2).getValue();
-                if (!(op == Alu.OP.ADD || op == Alu.OP.SUB)) {
-                    if (op == Alu.OP.MUL) {
-                        buildMulWithCons(operand1, num, to);
-                    } else {
-                        if (op == Alu.OP.SREM) {
-                            text.add(new Li(Register.K1, num));
-                            text.add(new AluAsm(AluAsm.AluOp.div, operand1, Register.K1));
-                            text.add(new MoveFrom(MoveFrom.Type.MFHI, to));
-                        } else {
-                            buildDivWithCons(operand1, num, to);
-                        }
-                    }
-                } else {
-                    if (op == Alu.OP.SUB) num = -num;
-                    text.add(new Li(Register.K1, num));
-                    text.add(new AluAsm(AluAsm.AluOp.addu, to, operand1, Register.K1));
-                }
+                handleConstantSecondOperand(value1, value2, op, targetReg);
             }
-        } else {
-            Register operand1 = Register.K0;
-            Register operand2 = Register.K1;
-            if (registerPool.containsKey(value1)) {
-                operand1 = registerPool.get(value1);
-            } else {
-                text.add(new Mem(Mem.MemOp.lw, stackOffset.get(value1), Register.SP, Register.K0));
-            }
-            if (registerPool.containsKey(value2)) {
-                operand2 = registerPool.get(value2);
-            } else {
-                text.add(new Mem(Mem.MemOp.lw, stackOffset.get(value2), Register.SP, Register.K1));
-            }
+        }
+
+        private void handleConstantFirstOperand(Value value1, Value value2,
+                                                Alu.OP op, Register targetReg) {
+            Register operand2 = loadValueToRegister(value2, Register.K0);
+            int constant = ((Constant) value1).getValue();
+
             if (op == Alu.OP.ADD) {
-                text.add(new AluAsm(AluAsm.AluOp.addu, to, operand1, operand2));
-            } else if (op == Alu.OP.SUB) {
-                text.add(new AluAsm(AluAsm.AluOp.subu, to, operand1, operand2));
+                text.add(new AluAsm(AluAsm.AluOp.addiu, targetReg, operand2, constant));
             } else if (op == Alu.OP.MUL) {
-                text.add(new AluAsm(AluAsm.AluOp.mul, to, operand1, operand2));
-            } else if (op == Alu.OP.SDIV) {
-                text.add(new AluAsm(AluAsm.AluOp.div, operand1, operand2));
-                text.add(new MoveFrom(MoveFrom.Type.MFLO, to));
-            } else if (op == Alu.OP.SREM) {
-                text.add(new AluAsm(AluAsm.AluOp.div, operand1, operand2));
-                text.add(new MoveFrom(MoveFrom.Type.MFHI, to));
-            }
-        }
-        if (to == Register.K0) {
-            text.add(new Mem(Mem.MemOp.sw, stackOffset.get(aluInstr), Register.SP, Register.K0));
-        }
-    }
-
-    public void buildMulWithCons(Register src, int cons, Register to) {
-        int cnt = 0;
-        int temp = cons;
-        int sll1 = 0;
-        int sll2 = 0;
-        for (int i = 1; i <= 31; i++) {
-            if ((temp & 1) == 1) {
-                cnt++;
-                if (cnt == 1) sll1 = i - 1;
-                if (cnt == 2) sll2 = i - 1;
-            }
-            temp = temp >> 1;
-        }
-        if (cons < 0 || cnt > 2) {
-            text.add(new Li(Register.V0, cons));
-            text.add(new AluAsm(AluAsm.AluOp.mul, to, Register.V0, src));
-        } else {
-            if (cnt == 1) {
-                text.add(new AluAsm(AluAsm.AluOp.sll, to, src, sll1));
+                buildMulWithCons(operand2, constant, targetReg);
             } else {
-                if (sll1 == 0) {
-                    text.add(new AluAsm(AluAsm.AluOp.sll, Register.V1, src, sll2));
-                    text.add(new AluAsm(AluAsm.AluOp.addu, to, src, Register.V1));
+                text.add(new Li(Register.K1, constant));
+                if (op == Alu.OP.SUB) {
+                    text.add(new AluAsm(AluAsm.AluOp.subu, targetReg, Register.K1, operand2));
                 } else {
-                    text.add(new AluAsm(AluAsm.AluOp.sll, Register.V0, src, sll1));
-                    text.add(new AluAsm(AluAsm.AluOp.sll, Register.V1, src, sll2));
-                    text.add(new AluAsm(AluAsm.AluOp.addu, to, Register.V0, Register.V1));
+                    text.add(new AluAsm(AluAsm.AluOp.div, Register.K1, operand2));
+                    text.add(new MoveFrom(op == Alu.OP.SDIV ? MoveFrom.Type.MFLO : MoveFrom.Type.MFHI, targetReg));
                 }
             }
         }
-    }
 
-    public int getSllCounts(int temp) {
-        int l = 0;
-        temp = temp >>> 1;
-        while (temp != 0) {
-            temp = temp >>> 1;
-            l++;
-        }
-        return l;
-    }
+        private void handleConstantSecondOperand(Value value1, Value value2,
+                                                 Alu.OP op, Register targetReg) {
+            Register operand1 = loadValueToRegister(value1, Register.K0);
+            int constant = ((Constant) value2).getValue();
 
-    public Register getDividend(Register oldDividend, int abs) {
-        int l = getSllCounts(abs);
-        text.add(new AluAsm(AluAsm.AluOp.sra, Register.V0, oldDividend, 31));
-        if (l > 0) {
-            text.add(new AluAsm(AluAsm.AluOp.srl, Register.V0, Register.V0, 32 - l));
-        }
-        text.add(new AluAsm(AluAsm.AluOp.addu, Register.V1, oldDividend, Register.V0));
-        return Register.V1;
-    }
-
-    public void buildDivWithCons(Register src, int cons, Register to) {
-        // 增加特判
-        if (cons == 1) {
-            if (to != src) {
-                text.add(new AluAsm(AluAsm.AluOp.addu, to, src, Register.ZERO));
+            if (op == Alu.OP.ADD || op == Alu.OP.SUB) {
+                text.add(new AluAsm(AluAsm.AluOp.addiu, targetReg, operand1,
+                        op == Alu.OP.ADD ? constant : -constant));
+            } else if (op == Alu.OP.MUL) {
+                buildMulWithCons(operand1, constant, targetReg);
+            } else if (op == Alu.OP.SDIV) {
+                buildDivWithCons(operand1, constant, targetReg);
+            } else {
+                text.add(new Li(Register.K1, constant));
+                text.add(new AluAsm(AluAsm.AluOp.div, operand1, Register.K1));
+                text.add(new MoveFrom(MoveFrom.Type.MFHI, targetReg));
             }
-            return;
         }
-        if (cons == -1) {
-            text.add(new AluAsm(AluAsm.AluOp.subu, to, Register.ZERO, src));
-            return;
+
+        private void handleNoConstants(Alu aluInstr, Value value1, Value value2,
+                                       Alu.OP op, Register targetReg) {
+            Register operand1 = loadValueToRegister(value1, Register.K0);
+            Register operand2 = loadValueToRegister(value2, Register.K1);
+
+            switch (op) {
+                case ADD -> text.add(new AluAsm(AluAsm.AluOp.addu, targetReg, operand1, operand2));
+                case SUB -> text.add(new AluAsm(AluAsm.AluOp.subu, targetReg, operand1, operand2));
+                case MUL -> text.add(new AluAsm(AluAsm.AluOp.mul, targetReg, operand1, operand2));
+                case SDIV -> {
+                    text.add(new AluAsm(AluAsm.AluOp.div, operand1, operand2));
+                    text.add(new MoveFrom(MoveFrom.Type.MFLO, targetReg));
+                }
+                case SREM -> {
+                    text.add(new AluAsm(AluAsm.AluOp.div, operand1, operand2));
+                    text.add(new MoveFrom(MoveFrom.Type.MFHI, targetReg));
+                }
+            }
         }
-        int abs = Math.abs(cons);
-        if ((abs & (abs - 1)) == 0) {
+
+        private Register loadValueToRegister(Value value, Register defaultReg) {
+            if (registerPool.containsKey(value)) {
+                return registerPool.get(value);
+            }
+            text.add(new Mem(Mem.MemOp.lw, stackOffset.get(value), Register.SP, defaultReg));
+            return defaultReg;
+        }
+
+        public void buildMulWithCons(Register src, int cons, Register to) {
+            if (cons < 0 || countSetBits(cons) > 2) {
+                text.add(new Li(Register.V0, cons));
+                text.add(new AluAsm(AluAsm.AluOp.mul, to, Register.V0, src));
+                return;
+            }
+
+            ShiftInfo shifts = calculateShifts(cons);
+            if (shifts.shiftCount == 1) {
+                text.add(new AluAsm(AluAsm.AluOp.sll, to, src, shifts.shift1));
+            } else {
+                buildTwoShiftMultiplication(src, shifts, to);
+            }
+        }
+
+        private void buildTwoShiftMultiplication(Register src, ShiftInfo shifts, Register to) {
+            if (shifts.shift1 == 0) {
+                text.add(new AluAsm(AluAsm.AluOp.sll, Register.V1, src, shifts.shift2));
+                text.add(new AluAsm(AluAsm.AluOp.addu, to, src, Register.V1));
+            } else {
+                text.add(new AluAsm(AluAsm.AluOp.sll, Register.V0, src, shifts.shift1));
+                text.add(new AluAsm(AluAsm.AluOp.sll, Register.V1, src, shifts.shift2));
+                text.add(new AluAsm(AluAsm.AluOp.addu, to, Register.V0, Register.V1));
+            }
+        }
+
+        private int countSetBits(int n) {
+            int count = 0;
+            while (n != 0) {
+                count += n & 1;
+                n >>>= 1;
+            }
+            return count;
+        }
+
+        private ShiftInfo calculateShifts(int n) {
+            int shift1 = -1, shift2 = -1;
+            int count = 0;
+            int pos = 0;
+
+            while (n != 0) {
+                if ((n & 1) == 1) {
+                    if (count == 0) shift1 = pos;
+                    if (count == 1) shift2 = pos;
+                    count++;
+                }
+                n >>>= 1;
+                pos++;
+            }
+
+            return new ShiftInfo(count, shift1, shift2);
+        }
+
+        public void buildDivWithCons(Register src, int cons, Register to) {
+            if (cons == 1) {
+                if (to != src) {
+                    text.add(new AluAsm(AluAsm.AluOp.addu, to, src, Register.ZERO));
+                }
+                return;
+            }
+            if (cons == -1) {
+                text.add(new AluAsm(AluAsm.AluOp.subu, to, Register.ZERO, src));
+                return;
+            }
+
+            int abs = Math.abs(cons);
+            if ((abs & (abs - 1)) == 0) {
+                handlePowerOfTwoDivision(src, abs, to);
+            } else {
+                handleGeneralDivision(src, cons, to);
+            }
+
+            if (cons < 0) {
+                text.add(new AluAsm(AluAsm.AluOp.subu, to, Register.ZERO, to));
+            }
+        }
+
+        private void handlePowerOfTwoDivision(Register src, int abs, Register to) {
+            int l = Integer.numberOfTrailingZeros(abs);
+            Register dividend = getDividend(src, abs);
+            text.add(new AluAsm(AluAsm.AluOp.sra, to, dividend, l));
+        }
+
+        private Register getDividend(Register oldDividend, int abs) {
             int l = getSllCounts(abs);
-            Register newDiviend = getDividend(src, abs);
-            text.add(new AluAsm(AluAsm.AluOp.sra, to, newDiviend, l));
-        } else {
+            text.add(new AluAsm(AluAsm.AluOp.sra, Register.V0, oldDividend, 31));
+            if (l > 0) {
+                text.add(new AluAsm(AluAsm.AluOp.srl, Register.V0, Register.V0, 32 - l));
+            }
+            text.add(new AluAsm(AluAsm.AluOp.addu, Register.V1, oldDividend, Register.V0));
+            return Register.V1;
+        }
+
+        public int getSllCounts(int temp) {
+            return 32 - Integer.numberOfLeadingZeros(temp) - 1;
+        }
+
+        private void handleGeneralDivision(Register src, int cons, Register to) {
             long t = 32;
+            int abs = Math.abs(cons);
             long nc = ((long) 1 << 31) - (((long) 1 << 31) % abs) - 1;
+
             while (((long) 1 << t) <= nc * (abs - ((long) 1 << t) % abs)) {
                 t++;
             }
+
             long m = ((((long) 1 << t) + (long) abs - ((long) 1 << t) % abs) / (long) abs);
             int n = (int) ((m << 32) >>> 32);
             int shift = (int) (t - 32);
+
             text.add(new Li(Register.V0, n));
             if (m >= 0x80000000L) {
                 text.add(new MoveTo(MoveTo.OP.hi, src));
@@ -466,11 +499,18 @@ public class MipsBuilder {
             text.add(new AluAsm(AluAsm.AluOp.srl, Register.A0, src, 31));
             text.add(new AluAsm(AluAsm.AluOp.addu, to, Register.V0, Register.A0));
         }
-        if (cons < 0) {
-            text.add(new AluAsm(AluAsm.AluOp.subu, to, Register.ZERO, to));
-        }
-    }
 
+        private static class ShiftInfo {
+            final int shiftCount;
+            final int shift1;
+            final int shift2;
+
+            ShiftInfo(int shiftCount, int shift1, int shift2) {
+                this.shiftCount = shiftCount;
+                this.shift1 = shift1;
+                this.shift2 = shift2;
+            }
+        }
     public void buildBasicAlu(Alu alu) {
         // 获取操作数和操作符
         Value op1 = alu.getOperands().get(0);

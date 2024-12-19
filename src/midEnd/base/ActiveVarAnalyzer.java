@@ -11,6 +11,7 @@ import java.util.List;
  * 活跃变量分析器
  */
 public class ActiveVarAnalyzer {
+    private static int maxActiveVariables = 0; // 记录最大活跃变量数量
     /**
      * 对指定函数进行活跃变量分析
      *
@@ -27,6 +28,9 @@ public class ActiveVarAnalyzer {
 
         // 第三步：迭代计算 In 和 Out 集合，直到收敛
         performLivenessAnalysis(blocks);
+
+        // 将最大活跃变量数量设置到函数对象中
+        function.setActiveCnt(maxActiveVariables);
 
         // 第四步：打印分析结果
         printLivenessResults(blocks);
@@ -80,7 +84,8 @@ public class ActiveVarAnalyzer {
                 // 计算新的 In 集合
                 HashSet<Value> newIn = computeInSet(bb, newOut);
                 bb.setInSet(newIn);
-
+                // 更新最大活跃变量数量
+                updateMaxActiveVariables(newIn, newOut);
                 // 检查是否有变化
                 if (!oldIn.equals(newIn) || !oldOut.equals(newOut)) {
                     changed = true;
@@ -88,7 +93,13 @@ public class ActiveVarAnalyzer {
             }
         }
     }
+    private static void updateMaxActiveVariables(HashSet<Value> inSet, HashSet<Value> outSet) {
+        // 计算当前基本块活跃变量的总数
+        int currentActiveVariables = inSet.size() + outSet.size();
 
+        // 更新最大值
+        maxActiveVariables = Math.max(maxActiveVariables, currentActiveVariables);
+    }
     /**
      * 计算一个基本块的 Out 集合
      *

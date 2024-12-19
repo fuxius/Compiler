@@ -1,16 +1,12 @@
 package LLVMIR.Global;
 
-import LLVMIR.Base.BasicBlock;
-import LLVMIR.Base.Value;
+import LLVMIR.Base.*;
+import LLVMIR.IRBuilder;
+import LLVMIR.Ins.*;
 import LLVMIR.LLVMType.LLVMType;
-import LLVMIR.Base.Param;
-import LLVMIR.Base.User;
 import backEnd.Base.Register;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 
 /**
  * 表示LLVM中的函数
@@ -26,6 +22,7 @@ public class Function extends User {
     private HashMap<BasicBlock, ArrayList<BasicBlock>> sucMap; // 后继基本块
     // 直接支配映射：每个基本块直接支配哪些基本块
     private HashMap<BasicBlock, ArrayList<BasicBlock>> immediateDominatesMap;
+    private int activeCnt; // 活跃变量计数
     /**
      * 构造函数
      *
@@ -43,6 +40,12 @@ public class Function extends User {
     public int getVarId() {
         varId++;
         return varId - 1;
+    }
+    public void setActiveCnt(int activeCnt) {
+        this.activeCnt = activeCnt;
+    }
+    public int getActiveCnt() {
+        return activeCnt;
     }
 
     public void setVarId(int varId) {
@@ -193,5 +196,72 @@ public class Function extends User {
      */
     public void setImdom(HashMap<BasicBlock, ArrayList<BasicBlock>> immediateDominatesMap) {
         this.immediateDominatesMap = immediateDominatesMap;
+    }
+
+    public String getVarName() {
+        return IRBuilder.tempName + getVarId();
+    }
+    private Boolean gvnAble = null;
+    public boolean isGvnAble() {
+        if (gvnAble != null) {
+            return gvnAble;
+        }
+        for (Param param : params) {
+            if (param.getType().isPointer()) {
+                gvnAble = false;
+                return false;
+            }
+        }
+        for (BasicBlock block : basicBlocks) {
+            for (Instruction instr : block.getInstrs()) {
+                if (instr instanceof Call
+                        || instr instanceof Getint ||
+                        instr instanceof Putint ||
+                        instr instanceof Putstr||
+                instr instanceof Getchar ||
+                instr instanceof Putch) {
+                    gvnAble = false;
+                    return false;
+
+                }
+                for (Value operand : instr.getOperands()) {
+                    if ((operand instanceof GlobalVar && !((GlobalVar) operand).isConst())) {
+                        gvnAble = false;
+                        return false;
+                    }
+                }
+            }
+        }
+        gvnAble = true;
+        return true;
+    }
+    private HashSet<Function> call;
+    public void setCall(HashSet<Function> call) {
+        this.call = call;
+    }
+    public HashSet<Function> getCall() {
+        return call;
+    }
+    private boolean hasSideEffects;
+    public void setHasSideEffects(boolean hasSideEffects) {
+        this.hasSideEffects = hasSideEffects;
+    }
+    public boolean isHasSideEffects() {
+        return hasSideEffects;
+    }
+
+    private ArrayList<BasicBlock> postOrder;
+
+    public ArrayList<BasicBlock> getPostOrderForIdomTree() {
+        postOrder = new ArrayList<>();
+        visitIdomTree(basicBlocks.get(0));
+        return postOrder;
+    }
+
+    public void visitIdomTree(BasicBlock curBlock) {
+        for (BasicBlock idommed : curBlock.getImdom()) {
+            visitIdomTree(idommed);
+        }
+        postOrder.add(curBlock);
     }
 }

@@ -67,4 +67,18 @@ public class Call extends Instruction {
     public void setActiveRegs(HashSet<Register> activeRegs) {
         this.activeRegs = activeRegs;
     }
+    public String getGvnHash(){
+        StringBuilder sb=new StringBuilder(operands.get(0).getName());
+        sb.append("(");
+        for(int i=1;i<=operands.size()-1;i++){
+            if(i==1){
+                sb.append(operands.get(i).getName());
+            }
+            else{
+                sb.append(",").append(operands.get(i).getName());
+            }
+        }
+        sb.append(")");
+        return sb.toString();
+    }
 }

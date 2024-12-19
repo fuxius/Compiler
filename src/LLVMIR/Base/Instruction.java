@@ -86,4 +86,7 @@ public class Instruction extends User {
                 || (instrType == InstrType.CALL && !getType().isVoid()) || instrType == InstrType.ALU
                 || instrType == InstrType.ICMP;
     }
+    public String getGvnHash(){
+        return "error";
+    }
 }

@@ -13,7 +13,7 @@ import java.util.List;
 public class Value {
     protected String Name;                // 值的名称
     protected LLVMType type;              // 值的类型
-    protected List<User> users;           // 使用该值的用户列表
+    protected ArrayList<User> users;           // 使用该值的用户列表
 
     /**
      * 构造 Value 对象
@@ -74,8 +74,8 @@ public class Value {
      *
      * @return 用户列表的只读视图
      */
-    public List<User> getUsers() {
-        return Collections.unmodifiableList(users);
+    public ArrayList<User> getUsers() {
+        return users;
     }
 
     /**

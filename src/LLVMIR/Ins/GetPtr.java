@@ -77,4 +77,7 @@ public class GetPtr extends Instruction {
                     Name, elementTypeStr, pointerTypeStr, pointer.getName(), offset.getName());
         }
     }
+    public String getGvnHash(){
+        return "GetPtr "+operands.get(0).getName()+" "+operands.get(1).getName();
+    }
 }

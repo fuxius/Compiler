@@ -1,60 +1,177 @@
 .data
-g0: .word 0
-g1: .word 1
-str0: .asciiz "WA\n"
-str1: .asciiz "OK\n"
+str0: .asciiz "21371295\n"
 .text
 main:
 	main_b0:
 		
-		#%t0 = load i32, i32* @g0
-		la $k0, g0
-		lw $t6, 0($k0)
-		
-		#%t1 = icmp eq i32 %t0, 0
-		li $k1, 0
-		seq $t6, $t6, $k1
-		
-		#%t2 = zext i1 %t1 to i32
-		addiu $t6, $t6, 0
-		
-		#%t3 = load i32, i32* @g1
-		la $k0, g1
-		lw $t1, 0($k0)
-		
-		#%t4 = sub nsw i32 %t2, %t3
-		subu $t6, $t6, $t1
-		
-		#%t5 = sub nsw i32 0, 1
-		li $k0, 0
-		li $k1, 1
-		subu $t1, $k0, $k1
-		
-		#%t6 = icmp eq i32 %t4, %t5
-		
-		#br i1 %t6, label %b1, label %b3
-		beq $t6, $t1, main_b1
-		j main_b3
-	main_b1:
-		
-		#call void @putstr(i8* getelementptr inbounds ([4 x i8], [4 x i8]* @str0, i64 0, i64 0))
+		#call void @putstr(i8* getelementptr inbounds ([10 x i8], [10 x i8]* @str0, i64 0, i64 0))
 		la $a0, str0
 		li $v0, 4
 		syscall
 		
+		#br label %b3
+		j main_b3
+	main_b2:
+		
+		#br label %b4
+		j main_b4
+	main_b3:
+		
+		#move %t40,0
+		li $s2, 0
+		
 		#br label %b2
 		j main_b2
-	main_b2:
+	main_b4:
+		
+		#move %t45,1
+		li $t6, 1
+		
+		#br label %b5
+		j main_b5
+	main_b5:
+		
+		#%t33 = add nsw i32 %t45, 1
+		addiu $s7, $t6, 1
+		
+		#%t9 = icmp sge i32 %t45, 0
+		
+		#br i1 %t9, label %b6, label %b7
+		bge $t6, 0, main_b6
+		j main_b7
+	main_b6:
+		
+		#br label %b7
+		j main_b7
+	main_b7:
+		
+		#%t11 = icmp eq i32 %t45, 0
+		li $k1, 0
+		seq $s7, $t6, $k1
+		
+		#%t13 = icmp ne i32 0, %t11
+		
+		#br i1 %t13, label %b8, label %b10
+		bne $s7, 0, main_b8
+		j main_b10
+	main_b8:
+		
+		#br label %b9
+		j main_b9
+	main_b9:
+		
+		#move %t46,2
+		li $s7, 2
+		
+		#br label %b12
+		j main_b12
+	main_b10:
+		
+		#br label %b9
+		j main_b9
+	main_b12:
+		
+		#%t18 = icmp eq i32 %t45, %t46
+		
+		#br i1 %t18, label %b13, label %b23
+		beq $t6, $s7, main_b13
+		j main_b23
+	main_b13:
+		
+		#move %t41,1
+		li $t4, 1
+		
+		#br label %b14
+		j main_b14
+	main_b23:
+		
+		#move %t41,%t40
+		move $t4, $s2
+		
+		#br label %b14
+		j main_b14
+	main_b14:
+		
+		#%t21 = icmp ne i32 %t45, %t46
+		
+		#br i1 %t21, label %b15, label %b24
+		bne $t6, $s7, main_b15
+		j main_b24
+	main_b15:
+		
+		#move %t42,0
+		li $s2, 0
+		
+		#br label %b16
+		j main_b16
+	main_b24:
+		
+		#move %t42,%t41
+		move $s2, $t4
+		
+		#br label %b16
+		j main_b16
+	main_b16:
+		
+		#br i1 %t21, label %b19, label %b25
+		bne $t6, $s7, main_b19
+		j main_b25
+	main_b17:
+		
+		#move %t43,1
+		li $t4, 1
+		
+		#br label %b18
+		j main_b18
+	main_b25:
+		
+		#move %t43,%t42
+		move $t4, $s2
+		
+		#br label %b18
+		j main_b18
+	main_b26:
+		
+		#move %t43,%t42
+		move $t4, $s2
+		
+		#br label %b18
+		j main_b18
+	main_b18:
+		
+		#br i1 %t21, label %b20, label %b22
+		bne $t6, $s7, main_b20
+		j main_b22
+	main_b19:
+		
+		#%t26 = icmp sgt i32 %t45, 0
+		
+		#br i1 %t26, label %b17, label %b26
+		bgt $t6, 0, main_b17
+		j main_b26
+	main_b20:
+		
+		#move %t44,2
+		li $s2, 2
+		
+		#br label %b21
+		j main_b21
+	main_b27:
+		
+		#move %t44,%t43
+		move $s2, $t4
+		
+		#br label %b21
+		j main_b21
+	main_b21:
 		
 		#ret i32 0
 		li $v0, 10
 		syscall
-	main_b3:
+	main_b22:
 		
-		#call void @putstr(i8* getelementptr inbounds ([4 x i8], [4 x i8]* @str1, i64 0, i64 0))
-		la $a0, str1
-		li $v0, 4
-		syscall
+		#%t31 = icmp sgt i32 %t45, 0
 		
-		#br label %b2
-		j main_b2
+		#br i1 %t31, label %b20, label %b27
+		bgt $t6, 0, main_b20
+		j main_b27

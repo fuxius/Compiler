@@ -85,10 +85,10 @@ public class RegAlloc {
         for (BasicBlock block : currentFunction.getBasicBlocks()) { // 遍历函数中的每个基本块
             for (Instruction instr : block.getInstrs()) { // 遍历基本块中的每条指令
                 for (Value operand : instr.getOperands()) { // 遍历指令的操作数
-                    useCountMap.put(operand, useCountMap.getOrDefault(operand, 0) + 1);
+                    useCountMap.put(operand, useCountMap.getOrDefault(operand, 0) + 1+ 10000 * block.getLoopDepth());
                 }
                 if (instr.hasLVal()) { // 如果指令有左值
-                    useCountMap.put(instr, useCountMap.getOrDefault(instr, 0) + 1);
+                    useCountMap.put(instr, useCountMap.getOrDefault(instr, 0) + 1 + 10000 * block.getLoopDepth());
                 }
             }
         }

@@ -6,6 +6,7 @@ import LLVMIR.Ins.Phi;
 import LLVMIR.Ins.Ret;
 import LLVMIR.LLVMType.LLVMType;
 import LLVMIR.Global.Function;
+import midEnd.Loop.LoopInfo;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -96,7 +97,7 @@ public class BasicBlock extends User {
      *
      * @return 指令列表
      */
-    public List<Instruction> getInstrs() {
+    public ArrayList<Instruction> getInstrs() {
         return instrs;
     }
 
@@ -307,5 +308,20 @@ public class BasicBlock extends User {
     public void setImdomDepth(int imdomDepth) {
         this.imdomDepth = imdomDepth;
     }
-
+    //循环分析
+    private LoopInfo parentLoop;
+    public void setParentLoop(LoopInfo parentLoop) {
+        this.parentLoop = parentLoop;
+    }
+    public int getLoopDepth()
+    {
+        if (parentLoop == null)
+        {
+            return 0;
+        }
+        return parentLoop.getLoopDepth();
+    }
+    public LoopInfo getParentLoop() {
+        return parentLoop;
+    }
 }
