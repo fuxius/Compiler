@@ -12,7 +12,7 @@ import java.util.List;
  * 包含对操作数 (operands) 的引用。
  */
 public class User extends Value {
-    protected final ArrayList<Value> operands; // 操作数列表
+    protected ArrayList<Value> operands; // 操作数列表
 
     /**
      * 构造 User 对象
@@ -66,7 +66,6 @@ public class User extends Value {
                 value.removeUser(this);
             }
         }
-        operands.clear();
     }
 
     /**
@@ -91,6 +90,6 @@ public class User extends Value {
      * @return 操作数列表的只读视图
      */
     public List<Value> getOperands() {
-        return Collections.unmodifiableList(operands);
+        return operands;
     }
 }

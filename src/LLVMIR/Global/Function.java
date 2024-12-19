@@ -18,7 +18,7 @@ import java.util.Objects;
 public class Function extends User {
     private final LLVMType returnType;       // 函数的返回类型
     private final List<Param> params;       // 函数的参数列表
-    private final List<BasicBlock> basicBlocks; // 函数包含的基本块
+    private final ArrayList<BasicBlock> basicBlocks; // 函数包含的基本块
     private int varId;                      // 变量ID计数
     private int blockId;                    // 基本块ID计数
     private HashMap<Value, Register> registerPool = new HashMap<>();    // 使用 HashMap 实现寄存器池
@@ -41,7 +41,8 @@ public class Function extends User {
 
     // 变量ID管理
     public int getVarId() {
-        return varId;
+        varId++;
+        return varId - 1;
     }
 
     public void setVarId(int varId) {
@@ -50,7 +51,8 @@ public class Function extends User {
 
     // 基本块ID管理
     public int getBlockId() {
-        return blockId;
+        blockId++;
+        return blockId - 1;
     }
 
     public void setBlockId(int blockId) {
@@ -95,8 +97,8 @@ public class Function extends User {
      *
      * @return 基本块列表
      */
-    public List<BasicBlock> getBasicBlocks() {
-        return new ArrayList<>(basicBlocks); // 返回副本，防止直接修改
+    public ArrayList<BasicBlock> getBasicBlocks() {
+        return basicBlocks;
     }
 
     /**

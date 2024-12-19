@@ -9,9 +9,10 @@ public class AluAsm extends AsmInstruction {
         // 算术运算
         addiu,addu, subu, mul, div,
         // 比较运算
-        seq, sne, slt, sgt, sle, sge,
+        seq, sne, slt, sgt, sle, sge,lui,ori,
         // 移动
         mov
+        ,madd,maddu,mult,multu
     }
     private AluOp op;
     private Register rd, rs, rt;
@@ -58,23 +59,54 @@ public class AluAsm extends AsmInstruction {
         return imm;
     }
 
+//    @Override
+//    public String toString() {
+//        StringBuilder sb = new StringBuilder();
+//        sb.append(op);
+//        sb.append(" ");
+//        if(rd != null) {
+//            sb.append(rd);
+//            sb.append(", ");
+//        }
+//        sb.append(rs);
+//        if (rt != null) {
+//            sb.append(", ");
+//            sb.append(rt);
+//        } else {
+//            sb.append(", ");
+//            sb.append(imm);
+//        }
+//        return sb.toString();
+//    }
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();
-        sb.append(op);
-        sb.append(" ");
-        if(rd != null) {
-            sb.append(rd);
-            sb.append(", ");
-        }
-        sb.append(rs);
-        if (rt != null) {
-            sb.append(", ");
-            sb.append(rt);
+        sb.append(op).append(" ");
+
+        if (op == AluOp.div || op == AluOp.mult) {
+            // 针对 div 和 mult 的特殊情况
+            sb.append(rs).append(", ").append(rt);
         } else {
-            sb.append(", ");
-            sb.append(imm);
+            if (op == AluOp.madd) {
+                // 针对 madd 的特殊情况
+                sb.append(rs).append(", ").append(rt).append("\n\t")
+                        .append("mfhi ").append(rd);
+            } else {
+                // 普通情况
+                if (rd != null) {
+                    sb.append(rd).append(", ");
+                }
+                sb.append(rs).append(", ");
+
+                if (rt != null) {
+                    sb.append(rt);
+                } else {
+                    sb.append(imm); // 如果 rt 为空，输出立即数 imm
+                }
+            }
         }
+
         return sb.toString();
     }
+
 }

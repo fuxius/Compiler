@@ -1,4 +1,4 @@
-package midEnd;
+package midEnd.base;
 
 import LLVMIR.Base.BasicBlock;
 import LLVMIR.Base.Instruction;
@@ -7,6 +7,7 @@ import LLVMIR.Global.Function;
 import LLVMIR.Base.Module;
 import LLVMIR.Ins.Alloca;
 import LLVMIR.Ins.Call;
+import LLVMIR.Ins.Phi;
 import backEnd.Base.Register;
 
 import java.util.*;
@@ -121,14 +122,16 @@ public class RegAlloc {
 
         // 第二步：遍历指令，释放不再活跃的寄存器，并进行寄存器分配
         for (Instruction instruction : instructions) {
-            for (Value operand : instruction.getOperands()) {
-                // 如果是变量的最后一次使用，且不在后继块的活跃集合中，且已分配寄存器
-                if (lastUsageMap.get(operand) == instruction
-                        && !currentBlock.getOutSet().contains(operand)
-                        && varToRegMap.containsKey(operand)) {
-                    Register reg = varToRegMap.get(operand);
-                    regToVarMap.remove(reg); // 移除寄存器到变量的映射
-                    variablesNoLongerUsed.add(operand); // 标记变量不再使用
+            if (!(instruction instanceof Phi)) {
+                for (Value operand : instruction.getOperands()) {
+                    // 如果是变量的最后一次使用，且不在后继块的活跃集合中，且已分配寄存器
+                    if (lastUsageMap.get(operand) == instruction
+                            && !currentBlock.getOutSet().contains(operand)
+                            && varToRegMap.containsKey(operand)) {
+                        Register reg = varToRegMap.get(operand);
+                        regToVarMap.remove(reg); // 移除寄存器到变量的映射
+                        variablesNoLongerUsed.add(operand); // 标记变量不再使用
+                    }
                 }
             }
 
@@ -252,7 +255,7 @@ public class RegAlloc {
         }
 
         // 如果没有找到不在 Out 集合中的变量，选择使用计数最低的变量进行溢出
-        if (regToSpill == null) {
+
             for (Map.Entry<Register, Value> entry : regToVarMap.entrySet()) {
                 Register reg = entry.getKey();
                 Value var = entry.getValue();
@@ -262,7 +265,7 @@ public class RegAlloc {
                     regToSpill = reg;
                 }
             }
-        }
+
 
         return regToSpill;
     }

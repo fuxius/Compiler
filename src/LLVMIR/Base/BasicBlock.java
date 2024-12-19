@@ -2,6 +2,7 @@ package LLVMIR.Base;
 
 import LLVMIR.Global.GlobalVar;
 import LLVMIR.Ins.Branch;
+import LLVMIR.Ins.Phi;
 import LLVMIR.Ins.Ret;
 import LLVMIR.LLVMType.LLVMType;
 import LLVMIR.Global.Function;
@@ -15,20 +16,20 @@ import java.util.Set;
  * 表示 LLVM IR 中的基本块，每个基本块是一个指令的序列
  */
 public class BasicBlock extends User {
-    private final List<Instruction> instrs; // 基本块中的指令
+    private final ArrayList<Instruction> instrs; // 基本块中的指令
     private final Function parentFunc;      // 所属的函数
-    private List<BasicBlock> predecessors; // 前驱基本块
-    private List<BasicBlock> successors; // 后继基本块
+    private ArrayList<BasicBlock> predecessors; // 前驱基本块
+    private ArrayList<BasicBlock> successors; // 后继基本块
     // 支配者基本块列表
-    private List<BasicBlock> dominators;
+    private ArrayList<BasicBlock> dominators;
     // 被支配基本块列表
-    private List<BasicBlock> dominatedBy;
+    private ArrayList<BasicBlock> dominatedBy;
     // 直接支配者
     private BasicBlock immediateDominator;
     // 直接支配的基本块列表
-    private List<BasicBlock> immediateDominates;
+    private ArrayList<BasicBlock> immediateDominates;
     // 支配边界列表
-    private List<BasicBlock> dominanceFrontier;
+    private ArrayList<BasicBlock> dominanceFrontier;
     // 直接支配树的深度
     private int imdomDepth;
     // 活跃变量分析所需的属性
@@ -37,6 +38,8 @@ public class BasicBlock extends User {
     private HashSet<Value> inSet;
     private HashSet<Value> outSet;
 
+    // 是否已经被删除
+    private boolean isDeleted = false;
     /**
      * 构造基本块
      *
@@ -133,18 +136,30 @@ public class BasicBlock extends User {
         return predecessors;
     }
 
-    public void setPredecessors(List<BasicBlock> predecessors) {
+    public void setPredecessors(ArrayList<BasicBlock> predecessors) {
         this.predecessors = predecessors;
     }
 
-    public List<BasicBlock> getSuccessors() {
+    public ArrayList<BasicBlock> getSuccessors() {
         return successors;
     }
 
-    public void setSuccessors(List<BasicBlock> successors) {
+    public void setSuccessors(ArrayList<BasicBlock> successors) {
         this.successors = successors;
     }
-
+    public void deleteForPhi(BasicBlock block){
+        for(User user:users){
+            if(user instanceof Phi phi && phi.getParentBlock()==block){
+                for(int i=0;i<=phi.getIncomingBlocks().size()-1;i++){
+                    if(phi.getIncomingBlocks().get(i)==this){
+                        phi.getIncomingBlocks().remove(i);
+                        phi.getOperands().remove(i);
+                        i--;
+                    }
+                }
+            }
+        }
+    }
 
     // 获取最后一条指令
     public Instruction getLastInstr() {
@@ -162,7 +177,13 @@ public class BasicBlock extends User {
     }
 
 
+    public void setDeleted() {
+        isDeleted = true;
+    }
 
+    public boolean isDeleted() {
+        return isDeleted;
+    }
 
 
     public HashSet<Value> getDefSet() {
@@ -202,9 +223,16 @@ public class BasicBlock extends User {
         HashSet<Value> def = new HashSet<>();
         HashSet<Value> use = new HashSet<>();
         // 遍历基本块中的指令
+        for(Instruction instr:instrs){
+            if(instr instanceof Phi){
+                for(Value value:instr.getOperands()){
+                    if(value instanceof Instruction || value instanceof Param || value instanceof GlobalVar){
+                        use.add(value);
+                    }
+                }
+            }
+        }
         for (Instruction instr : instrs) {
-            //TODO:插入phi指令以后需要特殊处理
-
             // 遍历指令的操作数
             for (Value value : instr.getOperands()) {
                 // 如果操作数不在 Def 集合中，且是指令、参数或全局变量，则加入 Use 集合
@@ -221,22 +249,22 @@ public class BasicBlock extends User {
         this.defSet = def;
     }
     // 获取支配者基本块列表
-    public List<BasicBlock> getDominators() {
+    public ArrayList<BasicBlock> getDominators() {
         return dominators;
     }
 
     // 设置支配者基本块列表
-    public void setDom(List<BasicBlock> dominators) {
+    public void setDom(ArrayList<BasicBlock> dominators) {
         this.dominators = dominators;
     }
 
     // 获取被支配基本块列表
-    public List<BasicBlock> getDominatedBy() {
+    public ArrayList<BasicBlock> getDominatedBy() {
         return dominatedBy;
     }
 
     // 设置被支配基本块列表
-    public void setDominatedBy(List<BasicBlock> dominatedBy) {
+    public void setDominatedBy(ArrayList<BasicBlock> dominatedBy) {
         this.dominatedBy = dominatedBy;
     }
 
@@ -251,22 +279,22 @@ public class BasicBlock extends User {
     }
 
     // 获取直接支配的基本块列表
-    public List<BasicBlock> getImdom() {
+    public ArrayList<BasicBlock> getImdom() {
         return immediateDominates;
     }
 
     // 设置直接支配的基本块列表
-    public void setImdom(List<BasicBlock> immediateDominates) {
+    public void setImdom(ArrayList<BasicBlock> immediateDominates) {
         this.immediateDominates = immediateDominates;
     }
 
     // 获取支配边界列表
-    public List<BasicBlock> getDF() {
+    public ArrayList<BasicBlock> getDF() {
         return dominanceFrontier;
     }
 
     // 设置支配边界列表
-    public void setDF(List<BasicBlock> dominanceFrontier) {
+    public void setDF(ArrayList<BasicBlock> dominanceFrontier) {
         this.dominanceFrontier = dominanceFrontier;
     }
 

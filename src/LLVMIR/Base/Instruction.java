@@ -17,7 +17,7 @@ public class Instruction extends User {
     }
 
     private final InstrType instrType;     // 指令类型
-    private final BasicBlock parentBlock; // 指令所属的基本块
+    private BasicBlock parentBlock; // 指令所属的基本块
 
     /**
      * 构造指令对象
@@ -55,6 +55,13 @@ public class Instruction extends User {
     public BasicBlock getParentBlock() {
         return parentBlock;
     }
+    // setParentBlock()
+    public void setParentBlock(BasicBlock parentBlock) {
+        if (parentBlock == null) {
+            throw new IllegalArgumentException("Parent block cannot be null");
+        }
+        this.parentBlock = parentBlock;
+    }
 
     /**
      * 判断指令是否有LVal
@@ -66,7 +73,6 @@ public class Instruction extends User {
         //如果指令是Alloca，那么它有LVal
         //如果指令是Load，那么它有LVal
         //如果指令是Getptr，那么它有LVal
-        //如果指令是Move，那么它有LVal
         //如果指令是Zext，那么它有LVal
         //如果指令是Trunc，那么它有LVal
         //如果指令是Phi，那么它有LVal
@@ -76,8 +82,7 @@ public class Instruction extends User {
         //如果指令是Icmp，那么它有LVal
 
         return instrType == InstrType.GETINT || instrType == InstrType.GETCHAR || instrType == InstrType.ALLOCA
-                || instrType == InstrType.LOAD || instrType == InstrType.GETPTR || instrType == InstrType.MOVE
-                || instrType == InstrType.ZEXT || instrType == InstrType.TRUNC || instrType == InstrType.PHI
+                || instrType == InstrType.LOAD || instrType == InstrType.GETPTR || instrType == InstrType.ZEXT || instrType == InstrType.TRUNC || instrType == InstrType.PHI
                 || (instrType == InstrType.CALL && !getType().isVoid()) || instrType == InstrType.ALU
                 || instrType == InstrType.ICMP;
     }

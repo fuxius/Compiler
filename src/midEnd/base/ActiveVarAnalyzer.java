@@ -1,4 +1,4 @@
-package midEnd;
+package midEnd.base;
 
 import LLVMIR.Base.BasicBlock;
 import LLVMIR.Base.Value;

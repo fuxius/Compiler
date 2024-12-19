@@ -13,6 +13,7 @@ import LLVMIR.Ins.*;
 import LLVMIR.Global.ConstStr;
 import LLVMIR.Global.GlobalVar;
 import backEnd.Instruction.*;
+import midEnd.Optimizer;
 
 
 import java.io.FileWriter;
@@ -101,7 +102,6 @@ public class MipsBuilder {
     // 减少当前栈偏移量
     public void decreaseStackOffset(int size) {
         currentStackOffset -= size;
-        assert currentStackOffset >= 0;
     }
     // 增加当前栈偏移量
     public void increaseStackOffset(int size) {
@@ -188,6 +188,12 @@ public class MipsBuilder {
                 if (instruction.hasLVal() && !stackOffset.containsKey(instruction) && !registerPool.containsKey(instruction)) {
                     decreaseStackOffset(4);
                     stackOffset.put(instruction, currentStackOffset);
+                }else if(instruction instanceof Move){
+                    Move move = (Move) instruction;
+                    if(!stackOffset.containsKey(move.getTo()) && !registerPool.containsKey(move.getTo())){
+                        decreaseStackOffset(4);
+                        stackOffset.put(move.getTo(), currentStackOffset);
+                    }
                 }
             }
         }
@@ -205,7 +211,14 @@ public class MipsBuilder {
     public void buildInstruction(Instruction instruction) {
         text.add(new Comment(instruction));
         switch (instruction.getInstrType()) {
-            case ALU -> buildAlu((Alu) instruction);
+            case ALU ->{
+                if(Optimizer.getInstance().isBasicOptimize()) {
+                    buildBasicAlu((Alu) instruction);
+                }
+                else {
+                    buildAlu((Alu) instruction);
+                }
+            }
             case ALLOCA -> buildAlloca((Alloca) instruction);
             case BRANCH -> buildBranch((Branch) instruction);
             case CALL -> buildCall((Call) instruction);
@@ -220,6 +233,8 @@ public class MipsBuilder {
             case PUTINT -> buildPutInt((Putint) instruction);
             case GETCHAR -> buildGetChar((Getchar) instruction);
             case PUTCH -> buildPutCh((Putch) instruction);
+            case MOVE -> buildMove((Move) instruction);
+            case ZEXT -> buildZext((Zext) instruction);
             default -> {}
         }
     }
@@ -236,8 +251,227 @@ public class MipsBuilder {
             return defaultRegister;
         }
     }
+    public void buildAlu(Alu aluInstr) {
+        Value value1 = aluInstr.getOperands().get(0);
+        Value value2 = aluInstr.getOperands().get(1);
+        Alu.OP op = aluInstr.getOp();
+        int consCnt = 0;
+        if (value1 instanceof Constant) {
+            consCnt++;
+        }
+        if (value2 instanceof Constant) {
+            consCnt++;
+        }
+        Register to;
+        if (registerPool.containsKey(aluInstr)) {
+            to = registerPool.get(aluInstr);
+        } else {
+            to = Register.K0;
+        }
 
-    public void buildAlu(Alu alu) {
+        if (consCnt == 2) {
+            text.add(new Li(Register.K0, ((Constant) value1).getValue()));
+            if (!(op == Alu.OP.ADD || op == Alu.OP.SUB)) {
+                text.add(new Li(Register.K1, ((Constant) value2).getValue()));
+                if (op == Alu.OP.MUL) {
+                    text.add(new AluAsm(AluAsm.AluOp.mul, to, Register.K0, Register.K1));
+                } else {
+                    text.add(new AluAsm(AluAsm.AluOp.div, Register.K0, Register.K1));
+                    if (op == Alu.OP.SREM) {
+                        text.add(new MoveFrom(MoveFrom.Type.MFHI, to));
+                    } else {
+                        text.add(new MoveFrom(MoveFrom.Type.MFLO, to));
+                    }
+                }
+            } else {
+                int num = op == Alu.OP.ADD ? ((Constant) value2).getValue() : -((Constant) value2).getValue();
+                text.add(new Li(Register.K1, num));
+                text.add(new AluAsm(AluAsm.AluOp.addu, to, Register.K0, Register.K1));
+            }
+        } else if (consCnt == 1) {
+            if (value1 instanceof Constant) {
+                Register operand2 = Register.K0;
+                if (registerPool.containsKey(value2)) {
+                    operand2 = registerPool.get(value2);
+                } else {
+                    text.add(new Mem(Mem.MemOp.lw, stackOffset.get(value2), Register.SP, Register.K0));
+                }
+                if (op == Alu.OP.ADD) {
+                    text.add(new Li(Register.K1, ((Constant) value1).getValue()));
+                    text.add(new AluAsm(AluAsm.AluOp.addu, to, operand2, Register.K1));
+                } else {
+                    if (op == Alu.OP.MUL) {
+                        int cons = ((Constant) value1).getValue();
+                        buildMulWithCons(operand2, cons, to);
+                    } else {
+                        text.add(new Li(Register.K1, ((Constant) value1).getValue()));
+                        if (op == Alu.OP.SUB) {
+                            text.add(new AluAsm(AluAsm.AluOp.subu, to, Register.K1, operand2));
+                        } else {
+                            text.add(new AluAsm(AluAsm.AluOp.div, Register.K1, operand2));
+                            if (op == Alu.OP.SDIV) {
+                                text.add(new MoveFrom(MoveFrom.Type.MFLO, to));
+                            } else {
+                                text.add(new MoveFrom(MoveFrom.Type.MFHI, to));
+                            }
+                        }
+                    }
+                }
+            } else {
+                Register operand1 = Register.K0;
+                int num;
+                if (registerPool.containsKey(value1)) {
+                    operand1 = registerPool.get(value1);
+                } else {
+                    text.add(new Mem(Mem.MemOp.lw, stackOffset.get(value1), Register.SP, Register.K0));
+                }
+                num = ((Constant) value2).getValue();
+                if (!(op == Alu.OP.ADD || op == Alu.OP.SUB)) {
+                    if (op == Alu.OP.MUL) {
+                        buildMulWithCons(operand1, num, to);
+                    } else {
+                        if (op == Alu.OP.SREM) {
+                            text.add(new Li(Register.K1, num));
+                            text.add(new AluAsm(AluAsm.AluOp.div, operand1, Register.K1));
+                            text.add(new MoveFrom(MoveFrom.Type.MFHI, to));
+                        } else {
+                            buildDivWithCons(operand1, num, to);
+                        }
+                    }
+                } else {
+                    if (op == Alu.OP.SUB) num = -num;
+                    text.add(new Li(Register.K1, num));
+                    text.add(new AluAsm(AluAsm.AluOp.addu, to, operand1, Register.K1));
+                }
+            }
+        } else {
+            Register operand1 = Register.K0;
+            Register operand2 = Register.K1;
+            if (registerPool.containsKey(value1)) {
+                operand1 = registerPool.get(value1);
+            } else {
+                text.add(new Mem(Mem.MemOp.lw, stackOffset.get(value1), Register.SP, Register.K0));
+            }
+            if (registerPool.containsKey(value2)) {
+                operand2 = registerPool.get(value2);
+            } else {
+                text.add(new Mem(Mem.MemOp.lw, stackOffset.get(value2), Register.SP, Register.K1));
+            }
+            if (op == Alu.OP.ADD) {
+                text.add(new AluAsm(AluAsm.AluOp.addu, to, operand1, operand2));
+            } else if (op == Alu.OP.SUB) {
+                text.add(new AluAsm(AluAsm.AluOp.subu, to, operand1, operand2));
+            } else if (op == Alu.OP.MUL) {
+                text.add(new AluAsm(AluAsm.AluOp.mul, to, operand1, operand2));
+            } else if (op == Alu.OP.SDIV) {
+                text.add(new AluAsm(AluAsm.AluOp.div, operand1, operand2));
+                text.add(new MoveFrom(MoveFrom.Type.MFLO, to));
+            } else if (op == Alu.OP.SREM) {
+                text.add(new AluAsm(AluAsm.AluOp.div, operand1, operand2));
+                text.add(new MoveFrom(MoveFrom.Type.MFHI, to));
+            }
+        }
+        if (to == Register.K0) {
+            text.add(new Mem(Mem.MemOp.sw, stackOffset.get(aluInstr), Register.SP, Register.K0));
+        }
+    }
+
+    public void buildMulWithCons(Register src, int cons, Register to) {
+        int cnt = 0;
+        int temp = cons;
+        int sll1 = 0;
+        int sll2 = 0;
+        for (int i = 1; i <= 31; i++) {
+            if ((temp & 1) == 1) {
+                cnt++;
+                if (cnt == 1) sll1 = i - 1;
+                if (cnt == 2) sll2 = i - 1;
+            }
+            temp = temp >> 1;
+        }
+        if (cons < 0 || cnt > 2) {
+            text.add(new Li(Register.V0, cons));
+            text.add(new AluAsm(AluAsm.AluOp.mul, to, Register.V0, src));
+        } else {
+            if (cnt == 1) {
+                text.add(new AluAsm(AluAsm.AluOp.sll, to, src, sll1));
+            } else {
+                if (sll1 == 0) {
+                    text.add(new AluAsm(AluAsm.AluOp.sll, Register.V1, src, sll2));
+                    text.add(new AluAsm(AluAsm.AluOp.addu, to, src, Register.V1));
+                } else {
+                    text.add(new AluAsm(AluAsm.AluOp.sll, Register.V0, src, sll1));
+                    text.add(new AluAsm(AluAsm.AluOp.sll, Register.V1, src, sll2));
+                    text.add(new AluAsm(AluAsm.AluOp.addu, to, Register.V0, Register.V1));
+                }
+            }
+        }
+    }
+
+    public int getSllCounts(int temp) {
+        int l = 0;
+        temp = temp >>> 1;
+        while (temp != 0) {
+            temp = temp >>> 1;
+            l++;
+        }
+        return l;
+    }
+
+    public Register getDividend(Register oldDividend, int abs) {
+        int l = getSllCounts(abs);
+        text.add(new AluAsm(AluAsm.AluOp.sra, Register.V0, oldDividend, 31));
+        if (l > 0) {
+            text.add(new AluAsm(AluAsm.AluOp.srl, Register.V0, Register.V0, 32 - l));
+        }
+        text.add(new AluAsm(AluAsm.AluOp.addu, Register.V1, oldDividend, Register.V0));
+        return Register.V1;
+    }
+
+    public void buildDivWithCons(Register src, int cons, Register to) {
+        // 增加特判
+        if (cons == 1) {
+            if (to != src) {
+                text.add(new AluAsm(AluAsm.AluOp.addu, to, src, Register.ZERO));
+            }
+            return;
+        }
+        if (cons == -1) {
+            text.add(new AluAsm(AluAsm.AluOp.subu, to, Register.ZERO, src));
+            return;
+        }
+        int abs = Math.abs(cons);
+        if ((abs & (abs - 1)) == 0) {
+            int l = getSllCounts(abs);
+            Register newDiviend = getDividend(src, abs);
+            text.add(new AluAsm(AluAsm.AluOp.sra, to, newDiviend, l));
+        } else {
+            long t = 32;
+            long nc = ((long) 1 << 31) - (((long) 1 << 31) % abs) - 1;
+            while (((long) 1 << t) <= nc * (abs - ((long) 1 << t) % abs)) {
+                t++;
+            }
+            long m = ((((long) 1 << t) + (long) abs - ((long) 1 << t) % abs) / (long) abs);
+            int n = (int) ((m << 32) >>> 32);
+            int shift = (int) (t - 32);
+            text.add(new Li(Register.V0, n));
+            if (m >= 0x80000000L) {
+                text.add(new MoveTo(MoveTo.OP.hi, src));
+                text.add(new AluAsm(AluAsm.AluOp.madd, Register.V1, src, Register.V0));
+            } else {
+                text.add(new AluAsm(AluAsm.AluOp.mult, src, Register.V0));
+                text.add(new MoveFrom(MoveFrom.Type.MFHI, Register.V1));
+            }
+            text.add(new AluAsm(AluAsm.AluOp.sra, Register.V0, Register.V1, shift));
+            text.add(new AluAsm(AluAsm.AluOp.srl, Register.A0, src, 31));
+            text.add(new AluAsm(AluAsm.AluOp.addu, to, Register.V0, Register.A0));
+        }
+        if (cons < 0) {
+            text.add(new AluAsm(AluAsm.AluOp.subu, to, Register.ZERO, to));
+        }
+    }
+
+    public void buildBasicAlu(Alu alu) {
         // 获取操作数和操作符
         Value op1 = alu.getOperands().get(0);
         Value op2 = alu.getOperands().get(1);
@@ -398,10 +632,10 @@ public class MipsBuilder {
 
     // 处理不在寄存器池中的 Alloca
     private void handleMemoryAlloca(Alloca alloca) {
-        // 使用临时寄存器 $k0 计算偏移量
+        // 使用临时寄存器 $K0 计算偏移量
         Register tempReg = Register.getRegister(Register.K0.ordinal());
 
-        // 生成指令：sp + offset -> $k0
+        // 生成指令：sp + offset -> $K0
         text.add(new AluAsm(AluAsm.AluOp.addiu, tempReg, Register.getRegister(Register.SP.ordinal()), getCurrentStackOffset()));
 
         // 将计算结果存储到栈中
@@ -621,7 +855,7 @@ public class MipsBuilder {
         }
         Register destReg = getRegister(call);
         if (destReg != null) {
-            // 将返回值从 $v0 移动到目标寄存器
+            // 将返回值从 $V0 移动到目标寄存器
             text.add(new AluAsm(AluAsm.AluOp.addiu, destReg, Register.V0, 0));
         } else {
             // 将返回值存储到栈中
@@ -632,22 +866,83 @@ public class MipsBuilder {
     private int allocateStaticStackOffset(int index) {
         return currentStackOffset - (index + 1) * 4; // 每次分配 4 字节，静态偏移
     }
-
+    // 生成 GETPTR 指令的汇编代码
     // 生成 GETPTR 指令的汇编代码
     public void buildGetPtr(GetPtr getPtr) {
-        // 获取指针的基地址和偏移量
-        Value base = getPtr.getOperands().get(0);
-        Value offset = getPtr.getOperands().get(1);
+        // 获取基地址和偏移量
+        Value base = getPtr.getOperands().get(0);  // 指针的基地址
+        Value offset = getPtr.getOperands().get(1); // 指针的偏移量
 
-        // 确定目标寄存器（默认使用 $k0）
-        Register targetReg = Register.getRegister(Register.K0.ordinal());
+        // 初始化寄存器
+        Register baseReg = Register.getRegister(Register.K0.ordinal());   // 默认基址寄存器 $K0
+        Register offsetReg = Register.getRegister(Register.K1.ordinal()); // 偏移量中间寄存器 $K1
+        Register resultReg = Register.getRegister(Register.K0.ordinal()); // 结果寄存器 $K0
 
-        // 处理基地址，获取基地址所在的寄存器
-        Register baseReg = determineBaseRegister(base);
+        // 确定基址寄存器
+        if (base instanceof GlobalVar) {
+            // 如果基址是全局变量，加载全局地址到寄存器
+            text.add(new La(baseReg, base.getRealName())); // 去掉全局变量前缀
+        } else if (registerPool.containsKey(base)) {
+            // 基址已分配寄存器，直接使用
+            baseReg = registerPool.get(base);
+        } else {
+            // 基址存储在栈中，从栈加载到寄存器
+            text.add(new Mem(Mem.MemOp.lw, getStackOffset(base), Register.SP, baseReg));
+        }
 
-        // 处理偏移量，根据偏移量的类型（常量或变量）进行不同处理
-        processOffset(getPtr, baseReg, offset, targetReg);
+        // 处理偏移量
+        if (offset instanceof Constant) {
+            // 偏移量为常量
+            int scaledOffset = ((Constant) offset).getValue() * 4; // 偏移量乘以 4
+            if (registerPool.containsKey(getPtr)) {
+                // 目标寄存器已分配
+                text.add(new AluAsm(AluAsm.AluOp.addiu, registerPool.get(getPtr), baseReg, scaledOffset));
+            } else {
+                // 使用结果寄存器存储
+                text.add(new AluAsm(AluAsm.AluOp.addiu, resultReg, baseReg, scaledOffset));
+                text.add(new Mem(Mem.MemOp.sw, getStackOffset(getPtr), Register.SP, resultReg));
+            }
+        } else {
+            // 偏移量为变量
+            if (registerPool.containsKey(offset)) {
+                // 偏移量已分配寄存器
+                offsetReg = registerPool.get(offset);
+            } else {
+                // 从栈加载偏移量到中间寄存器 $K1
+                text.add(new Mem(Mem.MemOp.lw, getStackOffset(offset), Register.SP, offsetReg));
+            }
+
+            // 左移偏移量寄存器 offsetReg (K1)，确保字节对齐
+            text.add(new AluAsm(AluAsm.AluOp.sll, Register.K1, offsetReg, 2)); // sll $K1, $offsetReg, 2
+
+            if (registerPool.containsKey(getPtr)) {
+                // 如果目标寄存器已分配
+                text.add(new AluAsm(AluAsm.AluOp.addu, registerPool.get(getPtr), baseReg, Register.K1)); // addu target, base, $K1
+            } else {
+                // 使用结果寄存器存储
+                text.add(new AluAsm(AluAsm.AluOp.addu, resultReg, baseReg, Register.K1)); // addu $resultReg, base, $K1
+                text.add(new Mem(Mem.MemOp.sw, getStackOffset(getPtr), Register.SP, resultReg));
+            }
+        }
     }
+
+
+
+    // 生成 GETPTR 指令的汇编代码
+//    public void buildGetPtr(GetPtr getPtr) {
+//        // 获取指针的基地址和偏移量
+//        Value base = getPtr.getOperands().get(0);
+//        Value offset = getPtr.getOperands().get(1);
+//
+//        // 确定目标寄存器（默认使用 $K0）
+//        Register targetReg = Register.getRegister(Register.K0.ordinal());
+//
+//        // 处理基地址，获取基地址所在的寄存器
+//        Register baseReg = determineBaseRegister(base);
+//
+//        // 处理偏移量，根据偏移量的类型（常量或变量）进行不同处理
+//        processOffset(getPtr, baseReg, offset, targetReg);
+//    }
 
     // 确定基地址所在的寄存器
     private Register determineBaseRegister(Value base) {
@@ -787,13 +1082,13 @@ public class MipsBuilder {
         // 处理指针
         Register ptrReg = Register.getRegister(Register.K0.ordinal());
         if (ptr instanceof GlobalVar) {
-            // 如果指针是全局变量，加载其地址到 k0 寄存器
+            // 如果指针是全局变量，加载其地址到 K0 寄存器
             text.add(new La(ptrReg, ptr.getRealName()));
         } else if (registerPool.containsKey(ptr)) {
             // 如果指针已被分配到寄存器，直接使用该寄存器
             ptrReg = getRegister(ptr);
         } else {
-            // 否则，从栈中加载指针的值到 k0 寄存器
+            // 否则，从栈中加载指针的值到 K0 寄存器
             text.add(new Mem(Mem.MemOp.lw, getStackOffset(ptr), Register.SP, ptrReg));
         }
         // 生成 load 指令，将指针指向的值加载到目标寄存器中
@@ -812,13 +1107,13 @@ public class MipsBuilder {
         // 处理指针
         Register ptrReg = Register.getRegister(Register.K0.ordinal());
         if (ptr instanceof GlobalVar) {
-            // 如果指针是全局变量，加载其地址到 k0 寄存器
+            // 如果指针是全局变量，加载其地址到 K0 寄存器
             text.add(new La(ptrReg, ptr.getRealName()));
         } else if (registerPool.containsKey(ptr)) {
             // 如果指针已被分配到寄存器，直接使用该寄存器
             ptrReg = getRegister(ptr);
         } else {
-            // 否则，从栈中加载指针的值到 k0 寄存器
+            // 否则，从栈中加载指针的值到 K0 寄存器
             text.add(new Mem(Mem.MemOp.lw, getStackOffset(ptr), Register.SP, ptrReg));
         }
         // 处理值
@@ -830,7 +1125,7 @@ public class MipsBuilder {
             // 如果值已被分配到寄存器，直接使用该寄存器
             valReg = getRegister(val);
         } else {
-            // 否则，从栈中加载值到 k1 寄存器
+            // 否则，从栈中加载值到 K1 寄存器
             Integer valOffset = getStackOffset(val);
             if (valOffset == null) {
                 decreaseStackOffset(4);
@@ -841,6 +1136,23 @@ public class MipsBuilder {
         }
         // 生成 store 指令，将值存储到指针指向的位置
         text.add(new Mem(Mem.MemOp.sw, 0, ptrReg, valReg));
+    }
+    public void buildZext(Zext zextInstr) {
+        Value value = zextInstr.getOperands().get(0);
+        Register reg = Register.K0;
+        if (value instanceof Constant) {
+            new Li(reg, ((Constant) value).getValue());
+        } else if (registerPool.containsKey(value)) {
+            reg = registerPool.get(value);
+        } else {
+            text.add(new Mem(Mem.MemOp.lw, stackOffset.get(value), Register.SP, Register.K0));
+        }
+        if (registerPool.containsKey(zextInstr)) { // zextInstr is a register
+//            new AluAsm(reg, null, AluAsm.AluOp.addiu, registerPool.get(zextInstr), 0); // move reg to zextInstr
+            text.add(new AluAsm(AluAsm.AluOp.addiu, registerPool.get(zextInstr), reg, 0));
+        } else {
+            text.add(new Mem(Mem.MemOp.sw, stackOffset.get(zextInstr), Register.SP, reg)); // store reg to zextInstr
+        }
     }
 
     // 生成 TRUNC 指令的汇编代码
@@ -865,7 +1177,7 @@ public class MipsBuilder {
 
     // 生成 RET 指令的汇编代码
     public void buildRet(Ret ret) {
-        // 如果是主函数，生成 Li 指令加载立即数 10 到 v0 寄存器，然后生成 syscall 指令
+        // 如果是主函数，生成 Li 指令加载立即数 10 到 V0 寄存器，然后生成 syscall 指令
         if (currentFunction.getRealName().equals("main")) {
             text.add(new Li(Register.V0, 10));
             text.add(new Syscall());
@@ -887,7 +1199,7 @@ public class MipsBuilder {
             Register valReg = getRegister(val);
             text.add(new AluAsm(AluAsm.AluOp.addiu, Register.V0, valReg, 0));
         } else {
-            // 否则，从栈中加载返回值到 k0 寄存器
+            // 否则，从栈中加载返回值到 K0 寄存器
             text.add(new Mem(Mem.MemOp.lw, getStackOffset(val), Register.SP, Register.V0));
         }
         // 生成无条件跳转指令
@@ -896,7 +1208,7 @@ public class MipsBuilder {
 
     // 生成 GetInt 指令的汇编代码
     public void buildGetInt(Getint getInt) {
-        // 生成 li 指令加载立即数 5 到 v0 寄存器
+        // 生成 li 指令加载立即数 5 到 V0 寄存器
         text.add(new Li(Register.V0, 5));
         // 生成 syscall 指令
         text.add(new Syscall());
@@ -911,7 +1223,7 @@ public class MipsBuilder {
     // 生成 PutInt 指令的汇编代码
     public void buildPutInt(Putint putInt) {
         handleParameter(putInt.getOperands().get(0), Register.A0);
-        // 生成 li 指令加载立即数 1 到 v0 寄存器
+        // 生成 li 指令加载立即数 1 到 V0 寄存器
         text.add(new Li(Register.V0, 1));
         // 生成 syscall 指令
         text.add(new Syscall());
@@ -921,7 +1233,7 @@ public class MipsBuilder {
     public void buildPutStr(Putstr putStr) {
         // 生成 la 指令加载字符串地址到 a0 寄存器
         text.add(new La(Register.A0, putStr.getConstStr().getRealName()));
-        // 生成 li 指令加载立即数 4 到 v0 寄存器
+        // 生成 li 指令加载立即数 4 到 V0 寄存器
         text.add(new Li(Register.V0, 4));
         // 生成 syscall 指令
         text.add(new Syscall());
@@ -929,7 +1241,7 @@ public class MipsBuilder {
 
     // 生成 GetChar 指令的汇编代码
     public void buildGetChar(Getchar getchar) {
-        // 生成 li 指令加载立即数 12 到 v0 寄存器
+        // 生成 li 指令加载立即数 12 到 V0 寄存器
         text.add(new Li(Register.V0, 12));
         // 生成 syscall 指令
         text.add(new Syscall());
@@ -944,7 +1256,7 @@ public class MipsBuilder {
     // 生成 PutCh 指令的汇编代码
     public void buildPutCh(Putch putCh) {
         handleParameter(putCh.getOperands().get(0), Register.A0);
-        // 生成 li 指令加载立即数 11 到 v0 寄存器
+        // 生成 li 指令加载立即数 11 到 V0 寄存器
         text.add(new Li(Register.V0, 11));
         // 生成 syscall 指令
         text.add(new Syscall());
@@ -973,6 +1285,24 @@ public class MipsBuilder {
     private void storeToStackIfNeeded(Value value, Register reg) {
         if (!registerPool.containsKey(value)) {
             text.add(new Mem(Mem.MemOp.sw, getStackOffset(value), Register.SP, reg));
+        }
+    }
+    public void buildMove(Move move) {
+        Value to = move.getTo();
+        Value from = move.getFrom();
+        Register toReg = Register.K0;
+        if (registerPool.containsKey(to)) {
+            toReg = registerPool.get(to);
+        }
+        if (from instanceof Constant) {
+            text.add(new Li(toReg, ((Constant) from).getValue()));
+        } else if (registerPool.containsKey(from)) {
+            text.add(new MoveAsm(toReg, registerPool.get(from)));
+        } else {
+            text.add(new Mem(Mem.MemOp.lw, getStackOffset(from), Register.SP, toReg));
+        }
+        if (toReg == Register.K0) {
+            text.add(new Mem(Mem.MemOp.sw, getStackOffset(to), Register.SP, toReg));
         }
     }
 

@@ -3,7 +3,6 @@ import ast.CompUnitNode;
 import backEnd.MipsBuilder;
 import frontEnd.Lexer;
 import frontEnd.Parser;
-//import frontEnd.SemanticAnalyzer;
 import frontEnd.SemanticAnalyzer;
 import error.ErrorHandler;
 import midEnd.Optimizer;
@@ -32,10 +31,11 @@ public class Compiler {
             // 构建并生成main函数
             IRBuilder irBuilder = IRBuilder.getInstance();
             irBuilder.analyze(compUnitNode);
-            irBuilder.outputLLVMIRToFile();
+
             // optimize
             Optimizer optimizer = Optimizer.getInstance();
             optimizer.run(irBuilder.getModule());
+            irBuilder.outputLLVMIRToFile();
             // 构建并生成 MIPS 汇编代码
             MipsBuilder mipsBuilder = MipsBuilder.getInstance();
             mipsBuilder.mipsBuilder(irBuilder.getModule());

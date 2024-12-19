@@ -102,12 +102,14 @@ public class Value {
     }
 
     /**
-     * 移除用户
+     * 移除用
      *
-     * @param user 要移除的用户
+     * @param user 要移除的用
      */
     public void removeUser(User user) {
-        users.remove(user);
+        if(users.contains(user)){
+            users.remove(user);
+        }
     }
 
     /**
