@@ -701,7 +701,8 @@ public class IRBuilder {
                     if (loopStack.isEmpty()) {
                         throw new IllegalStateException("Break statement not in loop");
                     }
-                    Loop loop = loopStack.peek();
+                    Loop loop = loopStack.peek();// 获取当前循环上下文的顶部元素（即最近的循环上下文）
+                    // 这用于在 break 或 continue 语句中确定跳转的目标块
                     curBlock.addInstr(new Branch(loop.getExit(), curBlock));
                 } else {
                     // continue 语句
@@ -1125,17 +1126,25 @@ public class IRBuilder {
     }
     // ForStmt → LVal '=' Exp
     public void buildForStmt(ForStmtNode forStmtNode, Token funcTypeToken) {
+        // 构建左值（LVal）的LLVM IR表示
         Value value1 = buildLValForAssign(forStmtNode.getlValNode());
+        // 构建表达式（Exp）的LLVM IR表示
         Value value2 = buildExp(forStmtNode.getExpNode());
+        // 获取左值的目标类型
         LLVMType targetType = ((PointerType) value1.getType()).getPointedType();
+        // 将表达式的值转换为目标类型
         Value convertedValue = convertType(value2, targetType);
-        curBlock.addInstr(new Store(convertedValue,value1, curBlock));
+        // 创建存储指令，将转换后的值存储到左值
+        curBlock.addInstr(new Store(convertedValue, value1, curBlock));
     }
-    //条件表达式 Cond → LOrExp // 存在即可
-    public void buildCond(CondNode condNode,BasicBlock thenBlock, BasicBlock elseBlock){
-        buildLOrExp(condNode.getlOrExpNode(),thenBlock,elseBlock);
+
+    // 条件表达式 Cond → LOrExp // 存在即可
+    public void buildCond(CondNode condNode, BasicBlock thenBlock, BasicBlock elseBlock) {
+        // 构建逻辑或表达式（LOrExp）的LLVM IR表示
+        buildLOrExp(condNode.getlOrExpNode(), thenBlock, elseBlock);
     }
-    //RelExp → AddExp | RelExp ('<' | '<=' | '>' | '>=') AddExp
+
+    // RelExp → AddExp | RelExp ('<' | '<=' | '>' | '>=') AddExp
     public Value buildRelExp(RelExpNode relExpNode) {
         // 构建操作数和运算符列表
         relExpNode.populateLists();
@@ -1144,18 +1153,20 @@ public class IRBuilder {
 
         // 初始操作数
         Value operand1 = buildAddExp(addExpNodes.get(0));
-        if(operators.size() == 0){
-            return operand1;
+        if (operators.size() == 0) {
+            return operand1; // 如果没有运算符，直接返回初始操作数
         }
         // 遍历后续的 AddExp 和运算符
         for (int i = 0; i < operators.size(); i++) {
+            // 构建下一个操作数
             Value operand2 = buildAddExp(addExpNodes.get(i + 1));
             Token operator = operators.get(i);
-            if(operand1.getType() == LLVMType.Int1){
+            // 如果操作数类型为Int1，进行类型扩展
+            if (operand1.getType() == LLVMType.Int1) {
                 operand1 = new Zext(tempName + getVarId(), operand1, curBlock, LLVMType.Int32);
                 curBlock.addInstr((Instruction) operand1);
             }
-            if(operand2.getType() == LLVMType.Int1){
+            if (operand2.getType() == LLVMType.Int1) {
                 operand2 = new Zext(tempName + getVarId(), operand2, curBlock, LLVMType.Int32);
                 curBlock.addInstr((Instruction) operand2);
             }
@@ -1174,93 +1185,92 @@ public class IRBuilder {
             operand1 = icmpInstr;
         }
 
-        return operand1;
+        return operand1; // 返回最终的比较结果
     }
 
-
-    //  LAndExp → EqExp | LAndExp '&&' EqExp
+    // LAndExp → EqExp | LAndExp '&&' EqExp
     public void buildLAndExp(LAndExpNode lAndExpNode, BasicBlock thenBlock, BasicBlock elseBlock) {
+        // 构建操作数和运算符列表
         lAndExpNode.populateLists();
         List<EqExpNode> eqExpNodes = lAndExpNode.getEqExpNodes();
         List<String> operators = lAndExpNode.getOperators();
         if (operators.isEmpty()) {
+            // 如果没有运算符，直接构建第一个操作数
             buildEqExp(eqExpNodes.get(0), thenBlock, elseBlock);
             return;
         }
+        // 遍历操作数和运算符
         for (int i = 0; i < operators.size(); i++) {
+            // 创建下一个基本块
             BasicBlock nextBlock = new BasicBlock(blockName + getBlockId(), curFunc);
             curFunc.addBasicBlock(nextBlock);
+            // 构建当前操作数
             buildEqExp(eqExpNodes.get(i), nextBlock, elseBlock);
-            curBlock = nextBlock;
+            curBlock = nextBlock; // 更新当前块
         }
+        // 构建最后一个操作数
         buildEqExp(eqExpNodes.get(eqExpNodes.size() - 1), thenBlock, elseBlock);
     }
     //LOrExp → LAndExp | LOrExp '||' LAndExp
     public void buildLOrExp(LOrExpNode lOrExpNode, BasicBlock thenBlock, BasicBlock elseBlock) {
-        lOrExpNode.populateLists();
-        List<LAndExpNode> lAndExpNodes = lOrExpNode.getlAndExpNodes();
-        List<String> operators = lOrExpNode.getOperators();
-        if (operators.isEmpty()) {
-            buildLAndExp(lAndExpNodes.get(0), thenBlock, elseBlock);
-            return;
+        lOrExpNode.populateLists(); // 填充操作数和运算符列表
+        List<LAndExpNode> lAndExpNodes = lOrExpNode.getlAndExpNodes(); // 获取逻辑与表达式列表
+        List<String> operators = lOrExpNode.getOperators(); // 获取运算符列表
+        if (operators.isEmpty()) { // 如果没有运算符
+            buildLAndExp(lAndExpNodes.get(0), thenBlock, elseBlock); // 直接构建第一个逻辑与表达式
+            return; // 返回
         }
-        for (int i = 0; i < operators.size(); i++) {
-            BasicBlock nextBlock = new BasicBlock(blockName + getBlockId(), curFunc);
-            curFunc.addBasicBlock(nextBlock);
-            buildLAndExp(lAndExpNodes.get(i), thenBlock, nextBlock);
-            curBlock = nextBlock;
+        for (int i = 0; i < operators.size(); i++) { // 遍历运算符
+            BasicBlock nextBlock = new BasicBlock(blockName + getBlockId(), curFunc); // 创建下一个基本块
+            curFunc.addBasicBlock(nextBlock); // 将基本块添加到当前函数
+            buildLAndExp(lAndExpNodes.get(i), thenBlock, nextBlock); // 构建当前逻辑与表达式
+            curBlock = nextBlock; // 更新当前块
         }
-        buildLAndExp(lAndExpNodes.get(lAndExpNodes.size() - 1), thenBlock, elseBlock);
+        buildLAndExp(lAndExpNodes.get(lAndExpNodes.size() - 1), thenBlock, elseBlock); // 构建最后一个逻辑与表达式
     }
+
     //EqExp → RelExp | EqExp ('==' | '!=') RelExp
     public void buildEqExp(EqExpNode eqExpNode, BasicBlock thenBlock, BasicBlock elseBlock) {
-        // 构建操作数和运算符列表
-        eqExpNode.populateLists();
-        List<RelExpNode> relExpNodes = eqExpNode.getRelExpNodes();
-        List<Token> operators = eqExpNode.getOperators();
+        eqExpNode.populateLists(); // 填充操作数和运算符列表
+        List<RelExpNode> relExpNodes = eqExpNode.getRelExpNodes(); // 获取关系表达式列表
+        List<Token> operators = eqExpNode.getOperators(); // 获取运算符列表
 
-        // 初始操作数
-        Value operand1 = buildRelExp(relExpNodes.get(0));
-        if (operators.isEmpty()) {
+        Value operand1 = buildRelExp(relExpNodes.get(0)); // 构建初始操作数
+        if (operators.isEmpty()) { // 如果没有运算符
             Value result;
-            if(operand1.getType() != LLVMType.Int1){
-                result = new Icmp(new Constant(0),operand1,tempName + getVarId(),curBlock,Icmp.OP.NE);
-                curBlock.addInstr((Instruction) result);
-            }else {
-                result = operand1;
+            if(operand1.getType() != LLVMType.Int1){ // 如果操作数类型不是Int1
+                result = new Icmp(new Constant(0), operand1, tempName + getVarId(), curBlock, Icmp.OP.NE); // 生成比较指令
+                curBlock.addInstr((Instruction) result); // 添加指令到当前块
+            } else {
+                result = operand1; // 否则直接使用操作数
             }
-            curBlock.addInstr(new Branch(result, thenBlock, elseBlock, curBlock));
-            return;
+            curBlock.addInstr(new Branch(result, thenBlock, elseBlock, curBlock)); // 根据结果跳转到不同的基本块
+            return; // 返回
         }
-        // 遍历后续的 RelExp 和运算符
-        for (int i = 0; i < operators.size(); i++) {
-            Value operand2 = buildRelExp(relExpNodes.get(i + 1));
-            Token operator = operators.get(i);
+        for (int i = 0; i < operators.size(); i++) { // 遍历运算符
+            Value operand2 = buildRelExp(relExpNodes.get(i + 1)); // 构建下一个操作数
+            Token operator = operators.get(i); // 获取当前运算符
 
-            // 根据操作符生成比较指令
-            Icmp.OP op = switch (operator.getType()) {
+            Icmp.OP op = switch (operator.getType()) { // 根据运算符类型生成比较指令
                 case EQL -> Icmp.OP.EQ;
                 case NEQ -> Icmp.OP.NE;
                 default -> throw new IllegalStateException("Unexpected value: " + operator.getType());
             };
-            //如果是bool类型，需要转换为int类型
-            if(operand1.getType() == LLVMType.Int1){
-                operand1 = new Zext(tempName + getVarId(), operand1, curBlock, LLVMType.Int32);
-                curBlock.addInstr((Instruction) operand1);
+            if(operand1.getType() == LLVMType.Int1){ // 如果操作数类型是Int1
+                operand1 = new Zext(tempName + getVarId(), operand1, curBlock, LLVMType.Int32); // 进行类型扩展
+                curBlock.addInstr((Instruction) operand1); // 添加指令到当前块
             }
-            if(operand2.getType() == LLVMType.Int1){
-                operand2 = new Zext(tempName + getVarId(), operand2, curBlock, LLVMType.Int32);
-                curBlock.addInstr((Instruction) operand2);
+            if(operand2.getType() == LLVMType.Int1){ // 如果操作数类型是Int1
+                operand2 = new Zext(tempName + getVarId(), operand2, curBlock, LLVMType.Int32); // 进行类型扩展
+                curBlock.addInstr((Instruction) operand2); // 添加指令到当前块
             }
-            Icmp icmpInstr = new Icmp(operand1, operand2, tempName + getVarId(), curBlock, op);
-            curBlock.addInstr(icmpInstr);
+            Icmp icmpInstr = new Icmp(operand1, operand2, tempName + getVarId(), curBlock, op); // 生成比较指令
+            curBlock.addInstr(icmpInstr); // 添加指令到当前块
 
-            // 更新操作数
-            operand1 = icmpInstr;
+            operand1 = icmpInstr; // 更新操作数
         }
 
-        // 根据结果跳转到不同的基本块
-        curBlock.addInstr(new Branch( operand1,thenBlock,elseBlock, curBlock));
+        curBlock.addInstr(new Branch(operand1, thenBlock, elseBlock, curBlock)); // 根据结果跳转到不同的基本块
     }
 
 

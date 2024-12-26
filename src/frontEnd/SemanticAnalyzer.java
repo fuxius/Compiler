@@ -545,76 +545,77 @@ public class SemanticAnalyzer {
      * UnaryExp → PrimaryExp | Ident '(' [FuncRParams] ')' | UnaryOp UnaryExp
      */
     private void traverseUnaryExp(UnaryExpNode unaryExpNode) {
-        if(unaryExpNode == null)    return;
+        if(unaryExpNode == null) return; // 如果unaryExpNode为空，直接返回
         if (unaryExpNode.getPrimaryExpNode() != null) {
-            traversePrimaryExp(unaryExpNode.getPrimaryExpNode());
+            traversePrimaryExp(unaryExpNode.getPrimaryExpNode()); // 如果存在PrimaryExpNode，遍历它
         } else if (unaryExpNode.getUnaryExpNode() != null) {
-            traverseUnaryExp(unaryExpNode.getUnaryExpNode());
+            traverseUnaryExp(unaryExpNode.getUnaryExpNode()); // 如果存在UnaryExpNode，递归遍历它
         } else if (unaryExpNode.getToken() != null) {
             // 函数调用 UnaryExp → Ident '(' [FuncRParams] ')'
-            String name = unaryExpNode.getToken().getValue();
-            int lineNumber = unaryExpNode.getToken().getLine();
+            String name = unaryExpNode.getToken().getValue(); // 获取函数名
+            int lineNumber = unaryExpNode.getToken().getLine(); // 获取行号
 
-            Symbol symbol = symbolTable.lookup(name);
+            Symbol symbol = symbolTable.lookup(name); // 在符号表中查找符号
             if (symbol == null) {
                 // 检测错误类型 'c'
-                errorHandler.reportError(lineNumber, ErrorType.UNDEFINED_IDENT);
-                return;
+                errorHandler.reportError(lineNumber, ErrorType.UNDEFINED_IDENT); // 报告未定义标识符错误
+                return; // 返回
             }
             if (symbol instanceof FunctionSymbol) {
-                FunctionSymbol functionSymbol = (FunctionSymbol) symbol;
-                int expectedParamCount = functionSymbol.getParameters() != null? functionSymbol.getParameters().size() : 0;
-                int actualParamCount = 0;
+                FunctionSymbol functionSymbol = (FunctionSymbol) symbol; // 将符号转换为FunctionSymbol
+                int expectedParamCount = functionSymbol.getParameters() != null ? functionSymbol.getParameters().size() : 0; // 获取期望的参数个数
+                int actualParamCount = 0; // 实际参数个数初始化为0
                 if (unaryExpNode.getFuncRParamsNode() != null) {
-                    actualParamCount = unaryExpNode.getFuncRParamsNode().getExpNodes()!= null? unaryExpNode.getFuncRParamsNode().getExpNodes().size():0;
-                    traverseFuncRParams(unaryExpNode.getFuncRParamsNode());
+                    actualParamCount = unaryExpNode.getFuncRParamsNode().getExpNodes() != null ? unaryExpNode.getFuncRParamsNode().getExpNodes().size() : 0; // 获取实际参数个数
+                    traverseFuncRParams(unaryExpNode.getFuncRParamsNode()); // 遍历函数实参
                 }
                 // 检测函数参数个数不匹配（错误类型 'd'）
                 if (expectedParamCount != actualParamCount) {
-                    errorHandler.reportError(lineNumber, ErrorType.FUNC_PARAM_COUNT_MISMATCH);
+                    errorHandler.reportError(lineNumber, ErrorType.FUNC_PARAM_COUNT_MISMATCH); // 报告参数个数不匹配错误
                 } else {
                     // 检测函数参数类型不匹配（错误类型 'e'）
-                    boolean typeMismatch = false;
+                    boolean typeMismatch = false; // 类型不匹配标志初始化为false
                     for (int i = 0; i < expectedParamCount; i++) {
-                        VariableSymbol formalParam = functionSymbol.getParameters().get(i);
-                        int formalParamDimension = formalParam.getDimension();
-                        String formalParamBaseType = formalParam.getBaseType();
+                        VariableSymbol formalParam = functionSymbol.getParameters().get(i); // 获取形式参数
+                        int formalParamDimension = formalParam.getDimension(); // 获取形式参数维度
+                        String formalParamBaseType = formalParam.getBaseType(); // 获取形式参数基础类型
 
-                        ExpNode actualParamExp = unaryExpNode.getFuncRParamsNode().getExpNodes().get(i);
-                        int actualParamDimension = getDimension(actualParamExp);
-                        String actualParamBaseType = getBaseType(actualParamExp);
+                        ExpNode actualParamExp = unaryExpNode.getFuncRParamsNode().getExpNodes().get(i); // 获取实际参数表达式
+                        int actualParamDimension = getDimension(actualParamExp); // 获取实际参数维度
+                        String actualParamBaseType = getBaseType(actualParamExp); // 获取实际参数基础类型
 
                         if (formalParamDimension != actualParamDimension) {
-                            typeMismatch = true;
-                            break;
+                            typeMismatch = true; // 如果维度不匹配，设置类型不匹配标志为true
+                            break; // 退出循环
                         } else if (formalParamDimension == 0) {
                             // 如果是标量类型，允许 int 和 char 之间的隐式转换
                             if (!areTypesCompatible(formalParamBaseType, actualParamBaseType)) {
-                                typeMismatch = true;
-                                break;
+                                typeMismatch = true; // 如果类型不兼容，设置类型不匹配标志为true
+                                break; // 退出循环
                             }
                         } else {
                             // 对于数组，基础类型必须完全匹配
                             if (!formalParamBaseType.equals(actualParamBaseType)) {
-                                typeMismatch = true;
-                                break;
+                                typeMismatch = true; // 如果基础类型不匹配，设置类型不匹配标志为true
+                                break; // 退出循环
                             }
                         }
                     }
                     if (typeMismatch) {
-                        errorHandler.reportError(lineNumber, ErrorType.FUNC_PARAM_TYPE_MISMATCH);
+                        errorHandler.reportError(lineNumber, ErrorType.FUNC_PARAM_TYPE_MISMATCH); // 报告参数类型不匹配错误
                     }
                 }
             }
         }
     }
+
     private boolean areTypesCompatible(String formalType, String actualType) {
         // 对于标量类型，int 和 char 之间是兼容的
         if ((formalType.equals("int") || formalType.equals("char")) &&
                 (actualType.equals("int") || actualType.equals("char"))) {
-            return true;
+            return true; // 如果类型兼容，返回true
         }
-        return formalType.equals(actualType);
+        return formalType.equals(actualType); // 否则，检查类型是否相等
     }
 
     /**
@@ -729,16 +730,18 @@ public class SemanticAnalyzer {
 
     /**
      * 统计格式化字符串中的 %d 个数
+     * @param formatString 格式化字符串
+     * @return %d 的个数
      */
     private int countFormatSpecifiers(String formatString) {
-        int count = 0;
-        for (int i = 0; i < formatString.length() - 1; i++) {
-            if (formatString.charAt(i) == '%' && (formatString.charAt(i + 1) == 'd'||formatString.charAt(i + 1) == 'c')) {
-                count++;
-                i++; // 跳过 'd'
+        int count = 0; // 初始化计数器
+        for (int i = 0; i < formatString.length() - 1; i++) { // 遍历格式化字符串
+            if (formatString.charAt(i) == '%' && (formatString.charAt(i + 1) == 'd' || formatString.charAt(i + 1) == 'c')) {
+                count++; // 如果找到 %d 或 %c，计数器加1
+                i++; // 跳过 'd' 或 'c'
             }
         }
-        return count;
+        return count; // 返回计数结果
     }
 
     /**
@@ -779,169 +782,156 @@ public class SemanticAnalyzer {
      */
     private String getBaseType(ExpNode expNode) {
         if (expNode == null) {
-            return "error"; // 默认返回 error 类型
+            return "error"; // 如果expNode为空，返回"error"类型
         }
-        return getBaseType(expNode.getAddExpNode());
+        return getBaseType(expNode.getAddExpNode()); // 获取AddExpNode的基本类型
     }
 
     private String getBaseType(AddExpNode addExpNode) {
         if (addExpNode == null) {
-            return "int";
+            return "int"; // 如果addExpNode为空，返回"int"类型
         }
         if (addExpNode.getSingleMulExpNode() != null) {
-            return getBaseType(addExpNode.getSingleMulExpNode());
+            return getBaseType(addExpNode.getSingleMulExpNode()); // 获取SingleMulExpNode的基本类型
         } else {
-            // 对于加减运算，结果为 int 类型
-            return "int";
+            return "int"; // 对于加减运算，结果为"int"类型
         }
     }
 
     private String getBaseType(MulExpNode mulExpNode) {
         if (mulExpNode == null) {
-            return "int";
+            return "int"; // 如果mulExpNode为空，返回"int"类型
         }
         if (mulExpNode.getSingleUnaryExpNode() != null) {
-            return getBaseType(mulExpNode.getSingleUnaryExpNode());
+            return getBaseType(mulExpNode.getSingleUnaryExpNode()); // 获取SingleUnaryExpNode的基本类型
         } else {
-            // 对于乘除模运算，结果为 int 类型
-            return "int";
+            return "int"; // 对于乘除模运算，结果为"int"类型
         }
     }
 
     private String getBaseType(UnaryExpNode unaryExpNode) {
         if (unaryExpNode == null) {
-            return "int";
+            return "int"; // 如果unaryExpNode为空，返回"int"类型
         }
         if (unaryExpNode.getPrimaryExpNode() != null) {
-            return getBaseType(unaryExpNode.getPrimaryExpNode());
+            return getBaseType(unaryExpNode.getPrimaryExpNode()); // 获取PrimaryExpNode的基本类型
         } else if (unaryExpNode.getUnaryExpNode() != null) {
-            return getBaseType(unaryExpNode.getUnaryExpNode());
+            return getBaseType(unaryExpNode.getUnaryExpNode()); // 获取UnaryExpNode的基本类型
         } else if (unaryExpNode.getToken() != null) {
-            // 函数调用，需要查符号表获取返回类型
-            String funcName = unaryExpNode.getToken().getValue();
-            Symbol symbol = symbolTable.lookup(funcName);
+            String funcName = unaryExpNode.getToken().getValue(); // 获取函数名
+            Symbol symbol = symbolTable.lookup(funcName); // 在符号表中查找符号
             if (symbol instanceof FunctionSymbol) {
                 FunctionSymbol funcSymbol = (FunctionSymbol) symbol;
-                return funcSymbol.getReturnType(); // 需要在 FunctionSymbol 中保存返回类型
+                return funcSymbol.getReturnType(); // 返回函数的返回类型
             }
         }
-        return "error"; // 默认返回 error 类型
+        return "error"; // 默认返回"error"类型
     }
 
     private String getBaseType(PrimaryExpNode primaryExpNode) {
         if (primaryExpNode == null) {
-            return "int";
+            return "int"; // 如果primaryExpNode为空，返回"int"类型
         }
         if (primaryExpNode.getExpNode() != null) {
-            return getBaseType(primaryExpNode.getExpNode());
+            return getBaseType(primaryExpNode.getExpNode()); // 获取ExpNode的基本类型
         } else if (primaryExpNode.getlValNode() != null) {
-            return getBaseType(primaryExpNode.getlValNode());
+            return getBaseType(primaryExpNode.getlValNode()); // 获取LValNode的基本类型
         } else {
-            // 数字或字符常量，根据类型返回
             if (primaryExpNode.getNumberNode() != null) {
-                return "int";
+                return "int"; // 数字常量，返回"int"类型
             } else if (primaryExpNode.getCharacterNode() != null) {
-                return "char";
+                return "char"; // 字符常量，返回"char"类型
             }
         }
-        return "error"; // 默认返回 error 类型
+        return "error"; // 默认返回"error"类型
     }
 
     private String getBaseType(LValNode lValNode) {
-        String name = lValNode.getToken().getValue();
-        Symbol symbol = symbolTable.lookup(name);
+        String name = lValNode.getToken().getValue(); // 获取标识符名称
+        Symbol symbol = symbolTable.lookup(name); // 在符号表中查找符号
         if (symbol instanceof VariableSymbol) {
-            return ((VariableSymbol) symbol).getBaseType();
+            return ((VariableSymbol) symbol).getBaseType(); // 返回变量的基本类型
         }
-        return "error"; // 默认返回 error 类型
+        return "error"; // 默认返回"error"类型
     }
-    /**
-     * 获取表达式的维数
-     */
+
     private int getDimension(ExpNode expNode) {
         if (expNode == null) {
-            return 0;
+            return 0; // 如果expNode为空，返回0维
         }
-        return getDimension(expNode.getAddExpNode());
+        return getDimension(expNode.getAddExpNode()); // 获取AddExpNode的维数
     }
 
     private int getDimension(AddExpNode addExpNode) {
         if (addExpNode == null) {
-            return 0;
+            return 0; // 如果addExpNode为空，返回0维
         }
         if (addExpNode.getSingleMulExpNode() != null) {
-            return getDimension(addExpNode.getSingleMulExpNode());
+            return getDimension(addExpNode.getSingleMulExpNode()); // 获取SingleMulExpNode的维数
         } else {
-            // 对于加减运算，结果为标量（维数为0）
-            return 0;
+            return 0; // 对于加减运算，结果为标量（0维）
         }
     }
 
     private int getDimension(MulExpNode mulExpNode) {
         if (mulExpNode == null) {
-            return 0;
+            return 0; // 如果mulExpNode为空，返回0维
         }
         if (mulExpNode.getSingleUnaryExpNode() != null) {
-            return getDimension(mulExpNode.getSingleUnaryExpNode());
+            return getDimension(mulExpNode.getSingleUnaryExpNode()); // 获取SingleUnaryExpNode的维数
         } else {
-            // 对于乘除模运算，结果为标量（维数为0）
-            return 0;
+            return 0; // 对于乘除模运算，结果为标量（0维）
         }
     }
 
     private int getDimension(UnaryExpNode unaryExpNode) {
         if (unaryExpNode == null) {
-            return 0;
+            return 0; // 如果unaryExpNode为空，返回0维
         }
         if (unaryExpNode.getPrimaryExpNode() != null) {
-            return getDimension(unaryExpNode.getPrimaryExpNode());
+            return getDimension(unaryExpNode.getPrimaryExpNode()); // 获取PrimaryExpNode的维数
         } else if (unaryExpNode.getUnaryExpNode() != null) {
-            // 一元运算，结果为标量
-            return 0;
+            return 0; // 一元运算，结果为标量（0维）
         } else if (unaryExpNode.getToken() != null) {
-            // 函数调用，需要根据函数的返回类型确定维数
-            String funcName = unaryExpNode.getToken().getValue();
-            Symbol symbol = symbolTable.lookup(funcName);
+            String funcName = unaryExpNode.getToken().getValue(); // 获取函数名
+            Symbol symbol = symbolTable.lookup(funcName); // 在符号表中查找符号
             if (symbol instanceof FunctionSymbol) {
                 FunctionSymbol funcSymbol = (FunctionSymbol) symbol;
-                // 假设函数的返回类型维数为0（标量）
-                // 如果有多维数组返回类型，需要根据实际情况修改
-                return 0;
+                return 0; // 假设函数的返回类型维数为0（标量）
             }
         }
-        return 0;
+        return 0; // 默认返回0维
     }
 
     private int getDimension(PrimaryExpNode primaryExpNode) {
         if (primaryExpNode == null) {
-            return 0;
+            return 0; // 如果primaryExpNode为空，返回0维
         }
         if (primaryExpNode.getExpNode() != null) {
-            return getDimension(primaryExpNode.getExpNode());
+            return getDimension(primaryExpNode.getExpNode()); // 获取ExpNode的维数
         } else if (primaryExpNode.getlValNode() != null) {
-            return getDimension(primaryExpNode.getlValNode());
+            return getDimension(primaryExpNode.getlValNode()); // 获取LValNode的维数
         } else {
-            // 数字或字符常量，维数为0
-            return 0;
+            return 0; // 数字或字符常量，维数为0
         }
     }
 
     private int getDimension(LValNode lValNode) {
         if (lValNode == null) {
-            return 0;
+            return 0; // 如果lValNode为空，返回0维
         }
-        String name = lValNode.getToken().getValue();
-        Symbol symbol = symbolTable.lookup(name);
+        String name = lValNode.getToken().getValue(); // 获取标识符名称
+        Symbol symbol = symbolTable.lookup(name); // 在符号表中查找符号
         int varDimension = 0;
         if (symbol != null && symbol instanceof VariableSymbol) {
-            varDimension = ((VariableSymbol) symbol).getDimension();
+            varDimension = ((VariableSymbol) symbol).getDimension(); // 获取变量的维数
         }
         int indicesUsed = 0;
         if (lValNode.getExpNode() != null) {
-            indicesUsed = 1;
+            indicesUsed = 1; // 使用的下标个数
         }
-        int resultDimension = varDimension - indicesUsed;
-        return resultDimension >= 0 ? resultDimension : 0;
+        int resultDimension = varDimension - indicesUsed; // 计算结果维数
+        return resultDimension >= 0 ? resultDimension : 0; // 返回结果维数，确保不小于0
     }
 
     /**
