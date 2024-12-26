@@ -11,54 +11,64 @@ import util.IOUtils;
 import java.util.ArrayList;
 import java.util.List;
 
-
+/**
+ * Lexer类用于将输入的源代码转换为Token。
+ */
 public class Lexer {
-    private static Lexer instance = new Lexer();
+    private static Lexer instance = new Lexer(); // Lexer单例对象
 
     private TokenManager tokenManager = TokenManager.getInstance();  // TokenManager单例对象
     private int line = 1;                             // 当前行号
     private String content;                           // 输入的源代码
     private int position = 0;                         // 当前读取到的字符位置
 
-
+    /**
+     * 获取Lexer单例对象。
+     * @return Lexer单例对象
+     */
     public static Lexer getInstance() {
         return instance;
     }
 
-    // 主分析函数
+    /**
+     * 主分析函数，将输入的源代码转换为Token。
+     * @param content 输入的源代码
+     */
     public void analyze(String content) {
         this.content = content;
         while (position < content.length()) {
             char currentChar = content.charAt(position);
 
-            if (Character.isWhitespace(currentChar)) {
+            if (Character.isWhitespace(currentChar)) { // 处理空白字符
                 if (currentChar == '\n') {
                     line++;
                 }
                 position++;
-            } else if (Character.isLetter(currentChar) || currentChar == '_') {
+            } else if (Character.isLetter(currentChar) || currentChar == '_') { // 处理标识符或关键字
                 analyzeIdentifierOrKeyword();
-            } else if (Character.isDigit(currentChar)) {
+            } else if (Character.isDigit(currentChar)) { // 处理数字
                 analyzeNumber();
-            } else if (currentChar == '"') {
+            } else if (currentChar == '"') { // 处理字符串
                 analyzeString();
-            } else if (currentChar == '\'') {
+            } else if (currentChar == '\'') { // 处理字符
                 analyzeChar();
-            } else if (isSingleCharDelimiter(currentChar)) {
+            } else if (isSingleCharDelimiter(currentChar)) { // 处理单字符分隔符
                 analyzeSingleCharDelimiter();
-            } else if (currentChar == '/') {
+            } else if (currentChar == '/') { // 处理注释或除号
                 analyzeCommentOrDivide();
-            } else if (currentChar == '&' || currentChar == '|') {
+            } else if (currentChar == '&' || currentChar == '|') { // 处理逻辑运算符
                 analyzeLogicalOperators();
             } else {
-//                // 遇到无法识别的符号
-//                ErrorHandler.getInstance().reportError(line, "Unknown symbol: " + currentChar);
+                // 遇到无法识别的符号
                 position++;
             }
         }
         saveResults(); // 保存Token和错误到文件
     }
 
+    /**
+     * 处理标识符或关键字。
+     */
     private void analyzeIdentifierOrKeyword() {
         StringBuilder tokenBuilder = new StringBuilder();
         char currentChar;
@@ -71,6 +81,9 @@ public class Lexer {
         tokenManager.saveToken(token);
     }
 
+    /**
+     * 处理数字。
+     */
     private void analyzeNumber() {
         StringBuilder numberBuilder = new StringBuilder();
         char currentChar;
@@ -82,6 +95,9 @@ public class Lexer {
         tokenManager.saveToken(TokenFactory.getInstance().createToken(numberStr, line, TokenType.INTCON));
     }
 
+    /**
+     * 处理字符串。
+     */
     private void analyzeString() {
         position++; // 跳过起始的引号
         StringBuilder stringBuilder = new StringBuilder();
@@ -96,11 +112,11 @@ public class Lexer {
             stringBuilder.append('"');
             tokenManager.saveToken(TokenFactory.getInstance().createToken(stringBuilder.toString(), line, TokenType.STRCON));
         }
-//        else {
-//            ErrorHandler.getInstance().reportError(line, "Unclosed string literal");
-//        }
     }
 
+    /**
+     * 处理字符。
+     */
     private void analyzeChar() {
         position++; // 跳过起始的单引号
         if (position < content.length()) {
@@ -108,7 +124,7 @@ public class Lexer {
             charBuilder.append("'");
             char charContent = content.charAt(position);
 
-            if (charContent == '\\') {
+            if (charContent == '\\') { // 处理转义字符
                 position++;
                 if (position < content.length()) {
                     charContent = content.charAt(position);
@@ -140,14 +156,12 @@ public class Lexer {
                 charBuilder.append("'");
                 tokenManager.saveToken(TokenFactory.getInstance().createToken(charBuilder.toString(), line, TokenType.CHRCON));
             }
-//            else {
-//                ErrorHandler.getInstance().reportError(line, "Unclosed character literal");
-//            }
         }
     }
 
-
-
+    /**
+     * 处理单字符分隔符。
+     */
     private void analyzeSingleCharDelimiter() {
         StringBuilder stringBuilder = new StringBuilder();
         char currentChar = content.charAt(position);
@@ -165,9 +179,11 @@ public class Lexer {
         else {
             tokenManager.saveToken(TokenFactory.getInstance().createToken(String.valueOf(currentChar), line));
         }
-
     }
 
+    /**
+     * 处理注释或除号。
+     */
     private void analyzeCommentOrDivide() {
         position++;  // 假设已经遇到了第一个 '/'
         if (position < content.length()) {
@@ -195,9 +211,6 @@ public class Lexer {
                     }
                     position++;
                 }
-//                if (!foundEnd) {
-//                    ErrorHandler.getInstance().reportError(line, "Unclosed multi-line comment");
-//                }
             } else {
                 // 不是注释，而是除号
                 tokenManager.saveToken(TokenFactory.getInstance().createToken("/", line, TokenType.DIV));
@@ -205,8 +218,9 @@ public class Lexer {
         }
     }
 
-
-
+    /**
+     * 处理逻辑运算符。
+     */
     private void analyzeLogicalOperators() {
         char currentChar = content.charAt(position);
         position++;
@@ -228,12 +242,19 @@ public class Lexer {
         }
     }
 
+    /**
+     * 判断字符是否为单字符分隔符。
+     * @param c 要判断的字符
+     * @return 如果是单字符分隔符则返回true，否则返回false
+     */
     private boolean isSingleCharDelimiter(char c) {
         return "+-*%(){}[],;!<>=".indexOf(c) >= 0;
     }
 
+    /**
+     * 保存Token和错误到文件。
+     */
     private void saveResults() {
         IOUtils.writeTokensToFile(tokenManager.getTokens(), "lexer.txt");
-//        IOUtils.writeErrorsToFile(ErrorHandler.getInstance().getErrors(), "error.txt");
     }
 }

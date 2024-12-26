@@ -141,7 +141,7 @@ public class Parser {
     }
 
 
-    // 解析Decl
+    // 解析Decl 声明 Decl → ConstDecl | VarDecl // 覆盖两种声明
     private DeclNode parseDecl() {
         if (checkToken(TokenType.CONSTTK)) {
             // 常量声明
@@ -183,7 +183,7 @@ public class Parser {
         return new ConstDeclNode(bTypeNode, constDefNodes);
     }
 
-    // 解析BType
+    // 解析BType 基本类型 BType → 'int' | 'char' // 覆盖两种数据类型的定义
     private BTypeNode parseBType() {
         if (checkToken(TokenType.INTTK)) {
             Token IntToken = match(TokenType.INTTK);
@@ -199,6 +199,7 @@ public class Parser {
 
 
     // 解析ConstDef
+    // 常量定义 ConstDef → Ident [ '[' ConstExp ']' ] '=' ConstInitVal // 包含普通变量、一维数组两种情况
     private ConstDefNode parseConstDef() {
         // 常量定义 ConstDef → Ident { '[' ConstExp ']' } '=' ConstInitVal
         if (checkToken(TokenType.IDENFR)) {
@@ -226,6 +227,7 @@ public class Parser {
 
 
     // 解析ConstInitVal
+    //常量初值 ConstInitVal → ConstExp | '{' [ ConstExp { ',' ConstExp } ] '}' | StringConst // 1.常表达式初值 2.一维数组初值
     private ConstInitValNode parseConstInitVal() {
         if (checkToken(TokenType.LBRACE)) {
             // '{' [ConstExp { ',' ConstExp }] '}'
@@ -269,6 +271,7 @@ public class Parser {
     }
 
     // 解析AddExp
+    // AddExp → MulExp | AddExp ('+' | '−') MulExp
     private AddExpNode parseAddExp() {
         MulExpNode mulExpNode = parseMulExp();
         AddExpNode addExpNode = new AddExpNode(mulExpNode);
@@ -284,6 +287,7 @@ public class Parser {
     }
 
     // 解析MulExp
+    // 乘除模表达式 MulExp → UnaryExp | MulExp ('*' | '/' | '%') UnaryExp // 1.UnaryExp 2.* 3./ 4.% 均需覆盖
     private MulExpNode parseMulExp() {
         UnaryExpNode unaryExpNode = parseUnaryExp();
         MulExpNode mulExpNode = new MulExpNode(unaryExpNode);
@@ -299,6 +303,8 @@ public class Parser {
     }
 
     // 解析UnaryExp
+    //一元表达式 UnaryExp → PrimaryExp | Ident '(' [FuncRParams] ')' | UnaryOp UnaryExp
+    //// 3种情况均需覆盖,函数调用也需要覆盖FuncRParams的不同情况
     private UnaryExpNode parseUnaryExp() {
         if (checkToken(TokenType.IDENFR)) {
             // 可能是函数调用或变量
@@ -367,6 +373,7 @@ public class Parser {
     }
 
     // 解析UnaryOp
+    // 单目运算符 UnaryOp → '+' | '−' | '!' 注：'!'仅出现在条件表达式中 // 三种均需覆盖
     private UnaryOpNode parseUnaryOp() {
        Token opToken = currentToken;
        match(currentToken.getType()); // 匹配一元运算符
@@ -376,6 +383,7 @@ public class Parser {
 
     }
     // 解析PrimaryExp
+    //基本表达式 PrimaryExp → '(' Exp ')' | LVal | Number | Character// 四种情况均需覆盖
     private PrimaryExpNode parsePrimaryExp() {
         if (checkToken(TokenType.LPARENT)) {
             // '(' Exp ')'
@@ -429,6 +437,7 @@ public class Parser {
 
 
     // 解析LVal
+    // 左值表达式 LVal → Ident ['[' Exp ']'] //1.普通变量、常量 2.一维数组
     private LValNode parseLVal() {
 
         Token identToken = match(TokenType.IDENFR);
@@ -453,6 +462,7 @@ public class Parser {
     }
 
     // 解析FuncRParams
+    // 函数实参表 FuncRParams → Exp { ',' Exp }
     private FuncRParamsNode parseFuncRParams() {
         List<ExpNode> expNodes = new ArrayList<>();
         ExpNode expNode = parseExp();
@@ -471,6 +481,7 @@ public class Parser {
     }
 
     // 解析Exp
+    // 表达式 Exp → AddExp // 存在即可
     private ExpNode parseExp() {
         AddExpNode addExpNode = parseAddExp();
         ExpNode expNode = new ExpNode(addExpNode);
@@ -479,6 +490,7 @@ public class Parser {
     }
 
     // 解析VarDecl
+    // 变量声明 VarDecl → BType VarDef { ',' VarDef } ';' // 1.花括号内重复0次 2.花括号内重复多次
     private VarDeclNode parseVarDecl() {
         BTypeNode bTypeNode = parseBType();
         List<VarDefNode> varDefNodes = new ArrayList<>();
@@ -503,6 +515,7 @@ public class Parser {
     }
 
     // 解析VarDef
+    // 变量定义 VarDef → Ident [ '[' ConstExp ']' ] | Ident [ '[' ConstExp ']' ] '=' InitVal // 包含普通常量、一维数组定义
     private VarDefNode parseVarDef() {
         if (checkToken(TokenType.IDENFR)) {
             Token identToken = match(TokenType.IDENFR);
@@ -531,6 +544,7 @@ public class Parser {
     }
 
     // 解析InitVal
+    // 变量初值 InitVal → Exp | '{' [ Exp { ',' Exp } ] '}' | StringConst // 1.表达式初值 2.一维数组初值
     private InitValNode parseInitVal() {
         if (checkToken(TokenType.LBRACE)) {
             // '{' [Exp { ',' Exp }] '}'
@@ -568,6 +582,7 @@ public class Parser {
     }
 
     // 解析FuncDef
+    // 函数定义 FuncDef → FuncType Ident '(' [FuncFParams] ')' Block // 1.无形参 2.有形参
     private FuncDefNode parseFuncDef() {
         FuncTypeNode funcTypeNode = parseFuncType();
         if (checkToken(TokenType.IDENFR)) {
@@ -612,6 +627,7 @@ public class Parser {
     }
 
     // 解析FuncFParams
+    //函数形参表 FuncFParams → FuncFParam { ',' FuncFParam } // 1.花括号内重复0次 2.花括号内重复多次
     private FuncFParamsNode parseFuncFParams() {
         List<FuncFParamNode> funcFParamNodes = new ArrayList<>();
         FuncFParamNode funcFParamNode = parseFuncFParam();
@@ -630,6 +646,7 @@ public class Parser {
     }
 
     // 解析FuncFParam
+    // 函数形参 FuncFParam → BType Ident ['[' ']'] // 1.普通变量2.一维数组变量
     private FuncFParamNode parseFuncFParam() {
         BTypeNode bTypeNode = parseBType();
         if (checkToken(TokenType.IDENFR)) {
@@ -653,6 +670,7 @@ public class Parser {
     }
 
     // 解析Block
+    // 语句块 Block → '{' { BlockItem } '}' // 1.花括号内重复0次 2.花括号内重复多次
     private BlockNode parseBlock() {
         Token RbraceToken = null;
         match(TokenType.LBRACE); // 匹配'{'
@@ -671,6 +689,7 @@ public class Parser {
     }
 
     // 解析BlockItem
+    // 语句块项 BlockItem → Decl | Stmt // 覆盖两种语句块项
     private BlockItemNode parseBlockItem() {
         if (isDecl()) {
             DeclNode declNode = parseDecl();
@@ -682,6 +701,18 @@ public class Parser {
     }
 
     // 解析Stmt
+    //语句 Stmt → LVal '=' Exp ';' // 每种类型的语句都要覆盖
+    //| [Exp] ';' //有无Exp两种情况
+    //| Block
+    //| 'if' '(' Cond ')' Stmt [ 'else' Stmt ] // 1.有else 2.无else
+    //| 'for' '(' [ForStmt] ';' [Cond] ';' [ForStmt] ')' Stmt // 1. 无缺省，1种情况 2.
+    //ForStmt与Cond中缺省一个，3种情况 3. ForStmt与Cond中缺省两个，3种情况 4. ForStmt与Cond全部
+    //缺省，1种情况
+    //| 'break' ';' | 'continue' ';'
+    //| 'return' [Exp] ';' // 1.有Exp 2.无Exp
+    //| LVal '=' 'getint''('')'';'
+    //| LVal '=' 'getchar''('')'';'
+    //| 'printf''('StringConst {','Exp}')'';' // 1.有Exp 2.无Exp
     private StmtNode parseStmt() {
         if (checkToken(TokenType.LBRACE)) {
             // Block
@@ -807,6 +838,25 @@ public class Parser {
             return new StmtNode(); // 使用默认构造函数
         } else {
             // 处理赋值语句或者表达式
+            //// 定义index为当前token位置
+            //// assign为下一次分号之前出现的等号的位置（仅限当前行）
+            //if assign > index then
+            //    if 下一个字符是'=' then
+            //        if 后面的字符是"getint" or "getchar"then
+            //            // 满足条件的情况下执行以下操作
+            //            LVal = "getint()" or "getchar()";
+            //        else
+            //            // 否则处理普通的赋值操作
+            //            LVal = Exp;
+            //        end if
+            //    else
+            //        // 否则是表达式的情况
+            //        [Exp];
+            //    end if
+            //else
+            //    // 如果assign <= index
+            //    [Exp];
+            //end if
             int currentIndex = tokenManager.getCurrentPosition();
             boolean isAssignment = false;
 

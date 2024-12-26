@@ -18,14 +18,11 @@ import java.util.List;
  */
 public class SemanticAnalyzer {
     private static final SemanticAnalyzer instance = new SemanticAnalyzer();
-    private List<String> parserOutputs = new ArrayList<>();
-
     public static SemanticAnalyzer getInstance() {
         return instance;
     }
     private SymbolTable symbolTable; // 符号表
     private ErrorHandler errorHandler; // 错误处理器
-    private int scopeLevel = 1; // 当前作用域层级，初始为全局作用域1
     private int loopCount = 0; // 循环嵌套层数，用于检测错误类型'm'
     private FunctionSymbol currentFunction = null;
 
