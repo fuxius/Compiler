@@ -19,7 +19,9 @@ public class ErrorHandler {
     }
     private List<String> errors = new ArrayList<>();
 
-
+    public boolean errorOccured() {
+        return !errors.isEmpty();
+    }
 
     public void reportError(int line, ErrorType type) {
         errors.add(line + " " + type.getCode());

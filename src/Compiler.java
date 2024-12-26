@@ -28,6 +28,10 @@ public class Compiler {
             semanticAnalyzer.analyze(compUnitNode);
             // 输出错误信息到 error.txt
             ErrorHandler.getInstance().outputErrors();
+            // 如果存在错误，不继续进行后续操作
+            if (ErrorHandler.getInstance().errorOccured()) {
+                return;
+            }
             // 构建并生成main函数
             IRBuilder irBuilder = IRBuilder.getInstance();
             irBuilder.analyze(compUnitNode);
