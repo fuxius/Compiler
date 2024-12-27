@@ -528,27 +528,74 @@ public class MipsBuilder {
                 this.shift2 = shift2;
             }
         }
-    public void buildBasicAlu(Alu alu) {
-        // 获取操作数和操作符
-        Value op1 = alu.getOperands().get(0);
-        Value op2 = alu.getOperands().get(1);
-        Alu.OP op = alu.getOp();
+    public void buildBasicAlu(Alu aluInstr) {
+        Value value1 = aluInstr.getOperands().get(0);
+        Value value2 = aluInstr.getOperands().get(1);
+        Alu.OP op = aluInstr.getOp();
+        Register op1 = Register.getRegister(Register.K0.ordinal());
+        Register op2 = Register.getRegister(Register.K1.ordinal());
 
-        // 确定目标寄存器
-        Register rd = getRegister(alu) != null ? getRegister(alu) : Register.getRegister(Register.K0.ordinal());
-
-        // 分支处理
-        switch (determineOperandType(op1, op2)) {
-            case "TWO_CONSTANTS" -> handleTwoConstants(op, rd, (Constant) op1, (Constant) op2);
-            case "ONE_CONSTANT" -> handleOneConstant(op, rd, op1, op2);
-            case "NO_CONSTANTS" -> handleNoConstants(op, rd, op1, op2);
+        // Handle first operand
+        if (value1 instanceof Constant) {
+            text.add(new Li(op1, ((Constant) value1).getValue()));
+        } else if (registerPool.containsKey(value1)) {
+            op1 = registerPool.get(value1);
+        } else {
+            text.add(new Mem(Mem.MemOp.lw, stackOffset.get(value1), Register.SP, op1));
         }
 
-        // 如果目标寄存器是 Register.K0，则将结果存回内存
-        if (rd == Register.getRegister(Register.K0.ordinal())) {
-            text.add(new Mem(Mem.MemOp.sw, getStackOffset(alu), Register.getRegister(Register.SP.ordinal()), rd));
+        // Handle second operand
+        if (value2 instanceof Constant) {
+            text.add(new Li(op2, ((Constant) value2).getValue()));
+        } else if (registerPool.containsKey(value2)) {
+            op2 = registerPool.get(value2);
+        } else {
+            text.add(new Mem(Mem.MemOp.lw, stackOffset.get(value2), Register.SP, op2));
+        }
+
+        // Determine target register
+        Register to = Register.getRegister(Register.K0.ordinal());
+        if (registerPool.containsKey(aluInstr)) {
+            to = registerPool.get(aluInstr);
+        }
+
+        // Handle different operations
+        switch (op) {
+            case ADD -> text.add(new AluAsm(AluAsm.AluOp.addu, to, op1, op2));
+            case SUB -> text.add(new AluAsm(AluAsm.AluOp.subu, to, op1, op2));
+            case MUL -> text.add(new AluAsm(AluAsm.AluOp.mul, to, op1, op2));
+            case SDIV, SREM -> {
+                text.add(new AluAsm(AluAsm.AluOp.div, op1, op2));
+                text.add(new MoveFrom(op == Alu.OP.SREM ? MoveFrom.Type.MFHI : MoveFrom.Type.MFLO, to));
+            }
+        }
+
+        // Store result if using temporary register
+        if (to == Register.getRegister(Register.K0.ordinal())) {
+            text.add(new Mem(Mem.MemOp.sw, stackOffset.get(aluInstr), Register.SP, to));
         }
     }
+//    public void buildBasicAlu(Alu alu) {
+//        // 获取操作数和操作符
+//        Value op1 = alu.getOperands().get(0);
+//        Value op2 = alu.getOperands().get(1);
+//        Alu.OP op = alu.getOp();
+//
+//        // 确定目标寄存器
+//        Register rd = getRegister(alu) != null ? getRegister(alu) : Register.getRegister(Register.K0.ordinal());
+//
+//        // 分支处理
+//        switch (determineOperandType(op1, op2)) {
+//            case "TWO_CONSTANTS" -> handleTwoConstants(op, rd, (Constant) op1, (Constant) op2);
+//            case "ONE_CONSTANT" -> handleOneConstant(op, rd, op1, op2);
+//            case "NO_CONSTANTS" -> handleNoConstants(op, rd, op1, op2);
+//        }
+//
+//        // 如果目标寄存器是 Register.K0，则将结果存回内存
+//        if (rd == Register.getRegister(Register.K0.ordinal())) {
+//            text.add(new Mem(Mem.MemOp.sw, getStackOffset(alu), Register.getRegister(Register.SP.ordinal()), rd));
+//        }
+//    }
     private String determineOperandType(Value op1, Value op2) {
         if (op1 instanceof Constant && op2 instanceof Constant) {
             return "TWO_CONSTANTS";
