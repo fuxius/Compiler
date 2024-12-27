@@ -568,6 +568,66 @@ public class IRBuilder {
             buildStmt(blockItemNode.getStmtNode(), funcTypeToken);
         }
     }
+    private void buildSwitchStmt(StmtNode switchStmtNode) {
+        // 1. 生成条件表达式
+        Value condition = buildExp(switchStmtNode.getExpNode());
+
+        // 2. 创建 case 和 default 的基本块
+        List<BasicBlock> caseBlocks = new ArrayList<>();
+        for (CaseStmtNode caseStmt : switchStmtNode.getCaseStmtNodes()) {
+            BasicBlock caseBlock = new BasicBlock(blockName + getBlockId(), curFunc);
+            caseBlocks.add(caseBlock);
+            curFunc.addBasicBlock(caseBlock);
+        }
+        BasicBlock defaultBlock = new BasicBlock(blockName + getBlockId(), curFunc);
+        BasicBlock endBlock = new BasicBlock(blockName + getBlockId(), curFunc);
+        curFunc.addBasicBlock(defaultBlock);
+        curFunc.addBasicBlock(endBlock);
+
+        // 3. 生成条件比较和跳转
+        BasicBlock nextBlock = defaultBlock;
+        for (int i = switchStmtNode.getCaseStmtNodes().size() - 1; i >= 0; i--) {
+            CaseStmtNode caseStmt = switchStmtNode.getCaseStmtNodes().get(i);
+            Constant caseValue = new Constant(caseStmt.getConstExpNode().evaluate());
+            BasicBlock caseBlock = caseBlocks.get(i);
+
+            // 比较当前条件是否匹配
+            Icmp cmp = new Icmp(condition, caseValue,tempName + getVarId(), curBlock, Icmp.OP.EQ);
+            curBlock.addInstr(cmp);
+
+            // 条件跳转
+            curBlock.addInstr(new Branch(cmp, caseBlock, nextBlock, curBlock));
+
+            // 更新下一跳
+            nextBlock = caseBlock;
+        }
+
+        // 4. 构建 case 块
+        for (int i = 0; i < caseBlocks.size(); i++) {
+            curBlock = caseBlocks.get(i);
+            StmtNode stmt = switchStmtNode.getCaseStmtNodes().get(i).getStmtNode();
+            buildStmt(stmt,null);
+
+            if (!curBlock.hasBr()) {
+                curBlock.addInstr(new Branch(endBlock, curBlock));
+            }
+        }
+
+        // 5. 构建 default 块
+        curBlock = defaultBlock;
+        if (switchStmtNode.getDefaultStmtNode() != null) {
+            StmtNode stmt = switchStmtNode.getDefaultStmtNode().getStmtNode();
+            buildStmt(stmt,null);
+
+        }
+        if (!curBlock.hasBr()) {
+            curBlock.addInstr(new Branch(endBlock, curBlock));
+        }
+
+        // 6. 设置当前块为结束块
+        curBlock = endBlock;
+    }
+
 
     /**
      * 遍历语句
@@ -580,6 +640,9 @@ public class IRBuilder {
     private void buildStmt(StmtNode stmtNode, Token funcTypeToken) {
         StmtType type = stmtNode.getStmtType();
         switch (type) {
+            case SWITCH:
+                buildSwitchStmt(stmtNode);
+                break;
             case ASSIGN:
                 // 赋值语句 Stmt → LVal '=' Exp ';'
                 Value value1 = buildLValForAssign(stmtNode.getlValNode()); // Corrected method name

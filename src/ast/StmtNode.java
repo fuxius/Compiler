@@ -33,6 +33,9 @@ public class StmtNode {
     private ForStmtNode forStmtNode1;
     private ForStmtNode forStmtNode2;
 
+    private List<CaseStmtNode> caseStmtNodes;
+    private DefaultStmtNode defaultStmtNode;
+
     // 构造方法根据不同的语句类型进行重载
     // 示例：LVal '=' Exp ';'
     public StmtNode(LValNode lValNode, ExpNode expNode) {
@@ -106,6 +109,24 @@ public class StmtNode {
         this.stmtNode1 = stmtNode1;
         this.stmtType = StmtType.FOR;
     }
+
+    // switch
+    public StmtNode(Token token,ExpNode expNode, List<CaseStmtNode> caseStmtNodes, DefaultStmtNode defaultStmtNode) {
+        this.token = token;
+        this.expNode = expNode;
+        this.caseStmtNodes = caseStmtNodes;
+        this.defaultStmtNode = defaultStmtNode;
+        this.stmtType = StmtType.SWITCH;
+    }
+
+    public List<CaseStmtNode> getCaseStmtNodes() {
+        return caseStmtNodes;
+    }
+
+    public DefaultStmtNode getDefaultStmtNode() {
+        return defaultStmtNode;
+    }
+
     public StmtType getStmtType() {
         return stmtType;
     }

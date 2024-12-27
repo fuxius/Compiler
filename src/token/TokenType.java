@@ -51,5 +51,11 @@ public enum TokenType {
 
     // 文件结束
     EOF ,        // End of file
-    UNKNOWN     // 未知类型，用于错误处理
+    UNKNOWN,     // 未知类型，用于错误处理
+
+    SWITCHTK,    // switch
+    CASETK,      // case
+    DEFAULTTK,   // default
+
+    COLON // 匹配 ':'
 }

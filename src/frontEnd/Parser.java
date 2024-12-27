@@ -699,7 +699,24 @@ public class Parser {
             return new BlockItemNode(stmtNode);
         }
     }
+    private CaseStmtNode parseCaseStmtNode(){
+        //CaseStmt → 'case' ConstExp ':' Stmt
+        match(TokenType.CASETK);
+        ConstExpNode constExpNode = parseConstExp();
+        match(TokenType.COLON);
+        StmtNode stmtNode = parseStmt();
+        outputGrammar("<Case>");
+        return new CaseStmtNode(constExpNode,stmtNode);
+    }
 
+    private DefaultStmtNode parseDefaultStmtNode(){
+        //DefaultStmt → 'default' ':' Stmt
+        match(TokenType.DEFAULTTK);
+        match(TokenType.COLON);
+        StmtNode stmtNode = parseStmt();
+        outputGrammar("<Default>");
+        return  new DefaultStmtNode(stmtNode);
+    }
     // 解析Stmt
     //语句 Stmt → LVal '=' Exp ';' // 每种类型的语句都要覆盖
     //| [Exp] ';' //有无Exp两种情况
@@ -719,7 +736,31 @@ public class Parser {
             BlockNode blockNode = parseBlock();
             outputGrammar("<Stmt>");
             return new StmtNode(blockNode);
-        } else if (checkToken(TokenType.IFTK)) {
+        } else if(checkToken(TokenType.SWITCHTK)){
+            // Stmt → 'switch' '(' Exp ')' '{' {CaseStmt} [DefaultStmt] '}'
+            Token switchToken = match(TokenType.SWITCHTK);
+            match(TokenType.LPARENT);
+            ExpNode expNode = parseExp();
+            if (!checkToken(TokenType.RPARENT)) {
+                reportError(prevToken, ErrorType.MISSING_RIGHT_BRACKET); // 缺少')'，使用prevToken
+            } else {
+                match(TokenType.RPARENT); // 匹配')'
+            }
+            match(TokenType.LBRACE);
+            List<CaseStmtNode> caseStmtNodes = new ArrayList<>();
+            DefaultStmtNode defaultStmtNode = null;
+            while(checkToken(TokenType.CASETK) || checkToken(TokenType.DEFAULTTK)){
+                if(checkToken(TokenType.CASETK)){
+                    caseStmtNodes.add(parseCaseStmtNode());
+                }else if(checkToken(TokenType.DEFAULTTK)){
+                    defaultStmtNode = parseDefaultStmtNode();
+                }
+            }
+            match(TokenType.RBRACE);
+            outputGrammar("<Stmt>");
+            return new StmtNode(switchToken,expNode, caseStmtNodes, defaultStmtNode);
+        }
+        else if (checkToken(TokenType.IFTK)) {
             // 'if' '(' Cond ')' Stmt [ 'else' Stmt ]
             match(TokenType.IFTK); // 匹配'if'
             match(TokenType.LPARENT); // 匹配'('

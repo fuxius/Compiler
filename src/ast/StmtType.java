@@ -12,5 +12,6 @@ public enum StmtType {
     GET,                // LVal '=' 'getint' '(' ')' ';' | LVal '=' 'getchar' '(' ')' ';'
     PRINTF,              // 'printf' '(' StringConst {','Exp} ')' ';'
     // 根据需要添加其他类型
-    NULL
+    NULL,
+    SWITCH,             // 'switch' '(' Exp ')' '{' {CaseStmt} [DefaultStmt] '}'
 }

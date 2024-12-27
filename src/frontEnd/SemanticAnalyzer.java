@@ -8,9 +8,7 @@ import token.Token;
 import token.TokenType;
 import util.IOUtils;
 
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
+import java.util.*;
 
 /**
  * 语义分析器，遍历AST，建立符号表并检测语义错误
@@ -362,6 +360,23 @@ public class SemanticAnalyzer {
     private void traverseStmt(StmtNode stmtNode, Token funcTypeToken) {
         StmtType type = stmtNode.getStmtType();
         switch (type) {
+            case SWITCH:
+                traverseExp(stmtNode.getExpNode());
+                Set<Integer> caseValues = new HashSet<>();
+                for(CaseStmtNode caseStmtNode : stmtNode.getCaseStmtNodes()){
+                    int caseValue = caseStmtNode.getConstExpNode().evaluate();
+                    if(caseValues.contains(caseValue)){
+                        errorHandler.reportError(stmtNode.getToken().getLine(),ErrorType.REDEFINED_IDENT);
+                    }else {
+                        caseValues.add(caseValue);
+                    }
+                    traverseStmt(caseStmtNode.getStmtNode(),funcTypeToken);
+                }
+                if(stmtNode.getDefaultStmtNode()!=null){
+                    traverseStmt(stmtNode.getDefaultStmtNode().getStmtNode(),funcTypeToken);
+                }
+                break;
+
             case ASSIGN:
                 // 赋值语句 Stmt → LVal '=' Exp ';'
                 traverseLVal(stmtNode.getlValNode(), true); // Corrected method name

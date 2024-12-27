@@ -39,6 +39,9 @@ public class TokenFactory {
         keywords.put("printf", TokenType.PRINTFTK);
         keywords.put("return", TokenType.RETURNTK);
         keywords.put("void", TokenType.VOIDTK);
+        keywords.put("switch", TokenType.SWITCHTK);
+        keywords.put("case", TokenType.CASETK);
+        keywords.put("default", TokenType.DEFAULTTK);
         // 加载操作符
         keywords.put("!", TokenType.NOT);
         keywords.put("&&", TokenType.AND);
