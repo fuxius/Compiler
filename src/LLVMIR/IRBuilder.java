@@ -601,6 +601,67 @@ public class IRBuilder {
             // 更新下一跳
             nextBlock = caseBlock;
         }
+//        private void buildSwitchStmt(StmtNode switchStmtNode) {
+//            // 1. 生成条件表达式
+//            Value condition = buildExp(switchStmtNode.getExpNode());
+//
+//            // 2. 创建 case 和 default 的基本块
+//            List<BasicBlock> caseBlocks = new ArrayList<>();
+//            for (CaseStmtNode caseStmt : switchStmtNode.getCaseStmtNodes()) {
+//                BasicBlock caseBlock = new BasicBlock(blockName + getBlockId(), curFunc);
+//                caseBlocks.add(caseBlock);
+//                curFunc.addBasicBlock(caseBlock);
+//            }
+//            BasicBlock defaultBlock = new BasicBlock(blockName + getBlockId(), curFunc);
+//            BasicBlock endBlock = new BasicBlock(blockName + getBlockId(), curFunc);
+//            curFunc.addBasicBlock(defaultBlock);
+//            curFunc.addBasicBlock(endBlock);
+//
+//            // 3. 生成条件比较和跳转
+//            BasicBlock nextBlock = defaultBlock; // 默认跳转到 defaultBlock
+//            for (int i = switchStmtNode.getCaseStmtNodes().size() - 1; i >= 0; i--) {
+//                CaseStmtNode caseStmt = switchStmtNode.getCaseStmtNodes().get(i);
+//                Constant caseValue = new Constant(caseStmt.getConstExpNode().evaluate());
+//                BasicBlock caseBlock = caseBlocks.get(i);
+//
+//                // 比较当前条件是否匹配
+//                Icmp cmp = new Icmp(condition, caseValue, tempName + getVarId(), curBlock, Icmp.OP.EQ);
+//                curBlock.addInstr(cmp);
+//
+//                // 条件跳转
+//                curBlock.addInstr(new Branch(cmp, caseBlock, nextBlock, curBlock));
+//
+//                // 更新下一跳
+//                nextBlock = caseBlock;
+//            }
+//
+//            // 4. 构建 case 块
+//            for (int i = 0; i < caseBlocks.size(); i++) {
+//                curBlock = caseBlocks.get(i);
+//
+//                // 构建 case 块的 BlockNode
+//                BlockNode block = switchStmtNode.getCaseStmtNodes().get(i).getBlockNode();
+//                buildBlock(block); // 调用 buildBlock 处理 BlockNode
+//
+//                if (!curBlock.hasBr()) {
+//                    curBlock.addInstr(new Branch(endBlock, curBlock));
+//                }
+//            }
+//
+//            // 5. 构建 default 块
+//            curBlock = defaultBlock;
+//            if (switchStmtNode.getDefaultStmtNode() != null) {
+//                // 构建 default 块的 BlockNode
+//                BlockNode block = switchStmtNode.getDefaultStmtNode().getBlockNode();
+//                buildBlock(block); // 调用 buildBlock 处理 BlockNode
+//            }
+//            if (!curBlock.hasBr()) {
+//                curBlock.addInstr(new Branch(endBlock, curBlock));
+//            }
+//
+//            // 6. 设置当前块为结束块
+//            curBlock = endBlock;
+//        }
 
         // 4. 构建 case 块
         for (int i = 0; i < caseBlocks.size(); i++) {
